@@ -39,8 +39,9 @@ Use `--no-llm` when repository policy prohibits any model processing.
 ## Reports And Sharing
 
 Person analysis JSON may include canonical email; resume Markdown deliberately omits email and
-other identities. Project assessment may list unresolved identity names/emails as warnings. Review
-and redact internal paths, identities and commit subjects before sharing reports externally.
+other identities. Assessment CSV omits email by default and requires `--include-email` to add it.
+Excluded team identities are recorded by Person ID and reason. Review and redact internal paths,
+identities and commit subjects before sharing reports externally.
 
 Verified outcome files are human-controlled evidence and may contain sensitive business results.
 Keep them outside public repositories unless approved.

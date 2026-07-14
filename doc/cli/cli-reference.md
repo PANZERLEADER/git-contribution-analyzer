@@ -50,12 +50,16 @@ Common filters are `--since`, `--until`, `--branch`, `--release`, `--scope` and 
 gca assess <repo> --person alice@example.com --no-llm --json
 gca assess <repo> --person alice@example.com --person bob@example.com --no-llm --json
 gca assess <repo> --all --exclude-person ci@example.com --no-llm --json
+gca assess <repo> --all --rank-by workload --rank-by difficulty --no-llm --json
+gca assess <repo> --all --ranking-config team-ranking.yml --no-llm --json
+gca report <repo> --run latest --format csv --output team.csv
 ```
 
 The result separates completed, pending, rework and integration activity. Size and difficulty are
 versioned distributions, not an employee score or ranking. `--person` and `--exclude-person` are
-repeatable. `--exclude-person` is valid only with `--all`; all-person selection includes confirmed
-`HUMAN` identities by default and records other identities as exclusions.
+repeatable. `--exclude-person` is valid only with `--all`; all-person selection includes active,
+confirmed `HUMAN` identities by default and records other identities as exclusions. CSV omits
+email unless `--include-email` is explicitly supplied.
 
 Identity maintenance supports reversible merges:
 

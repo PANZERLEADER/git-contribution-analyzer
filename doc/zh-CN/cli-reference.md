@@ -48,11 +48,14 @@ gca analyze <repo> --all --no-llm --json
 gca assess <repo> --person alice@example.com --no-llm --json
 gca assess <repo> --person alice@example.com --person bob@example.com --no-llm --json
 gca assess <repo> --all --exclude-person ci@example.com --no-llm --json
+gca assess <repo> --all --rank-by workload --rank-by difficulty --no-llm --json
+gca assess <repo> --all --ranking-config team-ranking.yml --no-llm --json
+gca report <repo> --run latest --format csv --output team.csv
 ```
 
 结果分别展示已完成、待交付、返工和集成活动。`--person` 与 `--exclude-person` 均可重复；
-`--exclude-person` 只能与 `--all` 组合。全员模式默认只纳入已确认的 `HUMAN` 身份，并在
-报告中记录其他身份的排除原因。规模与难度是带版本的分布，不是员工总分或排名。
+`--exclude-person` 只能与 `--all` 组合。全员模式默认只纳入 active、已确认的 `HUMAN` 身份，
+并在报告中记录其他身份的排除原因。CSV 默认不包含邮箱，只有显式提供 `--include-email` 才加入。
 
 身份维护支持可逆合并：
 

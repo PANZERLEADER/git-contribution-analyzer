@@ -176,8 +176,9 @@ clusters. They are labels for work areas, not claims about revenue, customer val
 ownership, or individual performance.
 
 Every Contribution Item and capability claim references an Evidence ID. Reports explicitly
-state that Git evidence does not prove business outcome, sole ownership, or a performance
-rating. Commit and line counts are context only; GCA does not generate a single employee score.
+state that Git evidence does not prove business outcome, sole ownership, or employee value.
+Optional ranking uses published workload, difficulty, and delivery rules; commit and raw line
+counts do not directly determine the score.
 
 Shared or system accounts require manual review. If one email is used by both a person and an
 automation identity, do not use the combined Person for individual performance conclusions.
@@ -192,8 +193,11 @@ do not create duplicate workload. Difficulty is based on versioned data, distrib
 compatibility, impact, critical-domain, and delivery signals; raw line count cannot raise it.
 
 Assessment reports include technical and business summaries, Evidence IDs, rule versions,
-confidence, and gaps. They do not produce an employee total, ranking, performance rating,
-completion percentage, working-hours estimate, compensation, or promotion recommendation.
+confidence, and gaps. Repeatable `--rank-by` enables dense dimension rankings. An explicit
+`--ranking-config` YAML can add a cohort-normalized weighted total; without it no total score is
+generated. These values are review aids, not performance ratings, working-hours estimates,
+compensation, or promotion recommendations. Persisted v2 runs can be exported with
+`gca report --format csv`; email is omitted unless `--include-email` is supplied.
 
 ## Resume Generation
 

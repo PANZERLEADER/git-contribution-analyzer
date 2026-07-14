@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Prepare `0.2.0.dev0` with repeatable person selection, all-scope exclusions, reversible identity
+  merge/unmerge events, deterministic workload/difficulty/delivery dense ranking, optional
+  Decimal-based weighted composite scores, and persisted UTF-8 BOM CSV export.
+- Add `work-assessment/v2` while preserving v1 JSON and Markdown replay compatibility.
+- Default team assessment to active, confirmed `HUMAN` identities and record explicit exclusion
+  reasons; keep ranking data out of LLM prompts and email out of CSV unless explicitly requested.
 - Add Simplified Chinese documentation for installation, CLI usage, architecture, data model,
   assessment/resume methodology, privacy, LLM Providers, golden tests, and the 0.1.0 release.
 

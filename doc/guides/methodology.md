@@ -21,8 +21,7 @@ noise are excluded from effective workload where the versioned rule declares the
 ## Work Size
 
 `SMALL`, `MEDIUM`, `LARGE` and `XLARGE` describe effective files, effective churn and module span
-relative to a repository baseline. Size is not duration or difficulty. GCA reports distributions
-and item lists and never reduces them to an employee total score.
+relative to a repository baseline. Size is not duration or difficulty.
 
 ## Difficulty
 
@@ -30,6 +29,14 @@ and item lists and never reduces them to an employee total score.
 structural change, impact scope, data migration, distributed consistency, business-critical paths,
 compatibility and delivery burden. Each result includes a rule version, Evidence, confidence and
 gaps. Missing structural analyzers lower confidence rather than inventing a signal.
+
+## Ranking
+
+Ranking is disabled unless requested. `workload` maps completed size bands to `1/3/6/10` points;
+`difficulty` maps completed difficulty levels to `1/2/4/6`; `delivery` uses completed item count
+with a rework penalty capped at 30%. Values use Decimal arithmetic, four decimal places and dense
+ties. An optional YAML configuration applies cohort-max normalization and explicit weights that
+must sum exactly to `1.0`. Scores cannot be compared across different cohorts or configurations.
 
 ## Resume Claims
 
@@ -43,7 +50,8 @@ record. Pending work is excluded by default and explicitly marked when requested
 
 ## LLM Role
 
-LLMs may explain or rewrite allowlisted deterministic claims. They cannot change size/difficulty,
+LLMs may explain or rewrite allowlisted deterministic claims. They cannot see or change ranking
+scores, change size/difficulty,
 introduce unknown Item/Evidence IDs, exceed claim-strength ceilings, add unsupported numbers or
 infer team ranking. Provider output is schema-validated and audited; failure can safely fall back
 to deterministic content.

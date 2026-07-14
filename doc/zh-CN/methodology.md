@@ -21,13 +21,20 @@ lockfile 不计入有效工作量。
 ## 工作规模
 
 `SMALL`、`MEDIUM`、`LARGE`、`XLARGE` 描述相对于仓库基线的有效文件数、有效 churn 和
-模块跨度。规模不等于工期，也不等于难度。GCA 输出分布和事项列表，不会聚合成员工总分。
+模块跨度。规模不等于工期，也不等于难度。
 
 ## 工程难度
 
 `ROUTINE`、`STANDARD`、`COMPLEX`、`HIGH_RISK` 是确定性规则结果。信号包括结构变化、
 影响范围、数据迁移、分布式一致性、业务关键路径、兼容性和交付负担。每个结果都包含规则版本、
 Evidence、置信度和 gaps。结构分析器缺失时应降低置信度，不能虚构信号。
+
+## 排名
+
+排名默认关闭。`workload` 只把已完成事项的规模映射为 `1/3/6/10` 分；`difficulty` 映射为
+`1/2/4/6` 分；`delivery` 使用已完成事项数并施加最高 30% 的返工惩罚。计算使用 Decimal、固定
+四位小数和 dense ranking。可选 YAML 配置使用 cohort-max 归一化，权重和必须精确为 `1.0`。
+不同 cohort 或不同配置下的分数不可直接横向比较。
 
 ## 简历 Claim
 
@@ -40,7 +47,8 @@ Evidence、置信度和 gaps。结构分析器缺失时应降低置信度，不�
 
 ## LLM 的角色
 
-LLM 可以解释或改写白名单内的确定性 claim，但不能修改规模/难度、引入未知 Item/Evidence ID、
+LLM 可以解释或改写白名单内的确定性 claim，但不能看到或修改排名分数、不能修改规模/难度、
+不能引入未知 Item/Evidence ID、
 突破 claim strength 上限、增加无依据数字或推断团队排名。Provider 输出经过 Schema 和 Evidence
 校验；失败时可以安全降级为确定性内容。
 

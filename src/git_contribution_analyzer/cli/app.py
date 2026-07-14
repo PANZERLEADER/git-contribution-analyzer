@@ -720,7 +720,7 @@ def report_command(
         bool, typer.Option("--include-email", help="Include email in CSV output.")
     ] = False,
 ) -> None:
-    """Rebuild a Markdown or JSON report from a persisted analysis run."""
+    """Rebuild a Markdown, JSON, or CSV report from a persisted analysis run."""
     try:
         rendered = generate_report(
             path, run_id, report_format, include_email=include_email

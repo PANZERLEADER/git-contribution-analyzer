@@ -24,6 +24,7 @@
 | No-change `gca sync` | less than 1 second |
 | Deterministic project `gca assess --all` | less than 3 seconds |
 | Deterministic confirmed-person `gca resume` | less than 2 seconds |
+| 100-person / 15,000-item three-dimension ranking plus composite | 0.0097 seconds |
 | SQLite workspace | less than 30 MiB |
 
 The first index is below the approved 15-minute target for an approximately 15,000-commit
@@ -35,6 +36,10 @@ reuse the completed index and exclude initial indexing time.
 Commands ran against the same indexed baseline and isolated workspace. `--no-llm` was used for
 assessment and resume so provider/network latency is excluded. Project name, path, source, identity
 counts, author emails, commit distributions and raw reports are deliberately not recorded.
+
+The ranking microbenchmark is reproducible with
+`python scripts/benchmark_ranking.py`. It builds 15,000 synthetic item assessments, computes all
+three dimensions and a weighted composite, and emits aggregate timing only.
 
 ## Remaining Benchmarks
 

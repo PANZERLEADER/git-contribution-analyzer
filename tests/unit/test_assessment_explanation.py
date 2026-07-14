@@ -6,6 +6,7 @@ import pytest
 
 from git_contribution_analyzer.adapters.llm.mock import MockLlmProvider
 from git_contribution_analyzer.application.services.assessment_explanation import (
+    build_assessment_explanation_task,
     explain_assessment,
 )
 from git_contribution_analyzer.domain.errors import LlmOutputError
@@ -115,3 +116,22 @@ def _report() -> dict:
 def test_should_reject_invalid_assessment_explanations(response: dict) -> None:
     with pytest.raises(LlmOutputError):
         explain_assessment(_report(), _snapshot(), MockLlmProvider(response=response))
+
+
+def test_should_not_send_ranking_values_to_llm_provider() -> None:
+    report = _report()
+    report["ranking"] = {
+        "enabled": True,
+        "dimensions": [
+            {
+                "dimension": "workload",
+                "entries": [{"personId": "p1", "rawValue": "10.0000", "rank": 1}],
+            }
+        ],
+    }
+
+    task = build_assessment_explanation_task(report, _snapshot())
+
+    assert "ranking" not in task.user_prompt.casefold()
+    assert "rawvalue" not in task.user_prompt.casefold()
+    assert '"rank"' not in task.user_prompt.casefold()

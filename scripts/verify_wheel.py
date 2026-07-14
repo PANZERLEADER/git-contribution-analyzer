@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import tempfile
@@ -20,9 +21,17 @@ def _venv_executable(root: Path, name: str) -> Path:
 
 
 def main() -> None:
-    wheels = sorted((ROOT / "dist").glob("*.whl"))
-    if len(wheels) != 1:
-        raise SystemExit(f"Expected exactly one wheel in dist, found {len(wheels)}")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--wheel", type=Path)
+    arguments = parser.parse_args()
+    if arguments.wheel is not None:
+        wheels = [arguments.wheel.resolve()]
+        if not wheels[0].is_file():
+            raise SystemExit(f"Wheel not found: {wheels[0]}")
+    else:
+        wheels = sorted((ROOT / "dist").glob("*.whl"))
+        if len(wheels) != 1:
+            raise SystemExit(f"Expected exactly one wheel in dist, found {len(wheels)}")
 
     with tempfile.TemporaryDirectory(prefix="gca-wheel-") as temporary:
         root = Path(temporary)
