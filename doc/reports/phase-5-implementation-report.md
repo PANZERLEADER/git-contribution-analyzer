@@ -6,8 +6,9 @@
 GCA 现在具备固定黄金仓库、完整双轨 E2E、三平台 CI/standalone 工作流、隔离 wheel 安装
 验证、方法论与隐私边界、数据模型、安装升级说明，以及性能和安全审计材料。
 
-正式 `0.1.0` 仍需将本提交推送后取得 Windows/Linux/macOS 工作流通过记录。版本因此保持
-`0.1.0.dev0`，不在缺少远端证据时提前标记正式发布。
+正式 `0.1.0` 已完成远端验收：Windows/Linux/macOS 普通 CI、Gitleaks、三平台 standalone
+构建和冒烟、wheel/sdist 保留、SHA-256 checksums 以及 GitHub Release 均已通过。正式版本
+标记为 `0.1.0`，并由 `v0.1.0` tag 固定发布提交。
 
 ## TDD 记录
 
@@ -80,13 +81,12 @@ pre-commit 在初始化 `ruff-pre-commit` 环境时无法连接 `github.com:443`
 确定性项目评估小于 3 秒，确定性个人简历小于 2 秒。详细口径见
 `doc/reports/performance-baseline.md`。
 
-## 剩余外部验收
+## 外部验收结果
 
-以下项目需要远端或发布权限，不能由单机结果替代：
-
-1. 推送后确认 Windows、Linux、macOS × Python 3.12/3.13 普通 CI 全部通过。
-2. 手动或 tag 触发 release workflow，确认三平台 standalone 制品可下载并通过冒烟。
-3. 确认 Gitleaks 历史扫描通过。
-4. 审核制品后将版本从 `0.1.0.dev0` 调整为 `0.1.0` 并创建正式 tag。
+- [x] Windows、Linux、macOS × Python 3.12/3.13 普通 CI 全部通过。
+- [x] Tagged release workflow 的三平台 standalone 构建和冒烟全部通过。
+- [x] Wheel、sdist、三平台 standalone 和 SHA-256 checksums 已发布并保留。
+- [x] Gitleaks Git 历史扫描通过。
+- [x] 版本已调整为 `0.1.0`，正式 `v0.1.0` tag 和 GitHub Release 已创建。
 
 阶段 9 的结构复杂度与调用影响 Adapter 仍是已批准的 MVP 后续项，不阻塞上述发布验收。
