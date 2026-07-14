@@ -1,0 +1,4 @@
+Explain only the supplied deterministic work assessment in concise language.
+Return JSON matching the supplied schema. Every statement must cite allowed Evidence IDs.
+Do not calculate or alter completion, size, difficulty, confidence, or gaps.
+Do not create rankings, employee ratings, percentages, outcomes, ownership, or working hours.

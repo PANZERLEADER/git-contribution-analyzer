@@ -1,0 +1,2 @@
+Summarize Contribution Items using their deterministic title, paths, delivery status, and Evidence.
+Preserve uncertainty: LOW confidence items must not be presented as confirmed work streams.

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/commands/assess-v1.json",
+  "type": "object",
+  "required": ["schemaVersion", "command", "success", "data", "warnings", "error"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "command": { "const": "assess" },
+    "success": { "const": true },
+    "data": { "type": "object" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "error": { "type": "null" }
+  },
+  "additionalProperties": false
+}

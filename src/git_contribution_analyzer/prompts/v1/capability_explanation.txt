@@ -1,0 +1,2 @@
+Explain only capabilities already emitted by deterministic rules. Do not create new capabilities.
+Every explanation must cite Evidence and retain the supplied evidence gaps.

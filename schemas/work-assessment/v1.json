@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/work-assessment/v1.json",
+  "type": "object",
+  "required": [
+    "schemaVersion", "reportType", "scopeType", "run", "snapshot", "subjects",
+    "workloadSummary", "difficultyDistribution", "technicalSummary", "businessSummary",
+    "evidence", "explanation", "identityWarnings", "warnings", "limitations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "reportType": { "const": "WORK_ASSESSMENT" },
+    "scopeType": { "enum": ["PERSON", "PROJECT"] },
+    "run": {
+      "type": "object",
+      "required": ["id", "runType", "parentRunId", "status", "startedAt", "completedAt", "ruleVersion", "providerId"],
+      "properties": {
+        "id": { "type": "string" },
+        "runType": { "const": "WORK_ASSESSMENT" },
+        "parentRunId": { "type": ["string", "null"] },
+        "status": { "enum": ["COMPLETED", "PARTIAL"] },
+        "startedAt": { "type": "string" },
+        "completedAt": { "type": "string" },
+        "ruleVersion": { "type": "string" },
+        "providerId": { "type": "string" },
+        "model": { "type": ["string", "null"] },
+        "promptVersion": { "type": ["string", "null"] },
+        "semanticSchemaVersion": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "snapshot": { "type": "object" },
+    "subjects": { "type": "array", "items": { "type": "object" } },
+    "workloadSummary": { "type": "object" },
+    "difficultyDistribution": { "type": "object" },
+    "technicalSummary": { "type": "object" },
+    "businessSummary": { "type": "object" },
+    "evidence": { "type": "array", "items": { "type": "object" } },
+    "explanation": { "type": ["object", "null"] },
+    "identityWarnings": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

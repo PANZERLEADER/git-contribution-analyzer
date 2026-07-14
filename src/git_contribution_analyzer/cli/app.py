@@ -1,0 +1,640 @@
+from __future__ import annotations
+
+from datetime import UTC, datetime, time
+from pathlib import Path
+from typing import Annotated, Any
+
+import typer
+
+from git_contribution_analyzer import __version__
+from git_contribution_analyzer.adapters.git.repository_discovery import discover_repository
+from git_contribution_analyzer.adapters.llm.registry import (
+    build_provider,
+    provider_descriptors,
+)
+from git_contribution_analyzer.adapters.outcomes.yaml_loader import load_verified_outcomes
+from git_contribution_analyzer.adapters.workspace.config import load_config
+from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
+from git_contribution_analyzer.application.dto.results import CommandEnvelope
+from git_contribution_analyzer.application.use_cases.analyze_contributions import (
+    analyze_contributions,
+)
+from git_contribution_analyzer.application.use_cases.analyze_project import analyze_project
+from git_contribution_analyzer.application.use_cases.assess_work import assess_work
+from git_contribution_analyzer.application.use_cases.generate_report import generate_report
+from git_contribution_analyzer.application.use_cases.generate_resume import generate_resume
+from git_contribution_analyzer.application.use_cases.get_run import get_run
+from git_contribution_analyzer.application.use_cases.get_status import get_status
+from git_contribution_analyzer.application.use_cases.index_repository import index_repository
+from git_contribution_analyzer.application.use_cases.init_project import init_project
+from git_contribution_analyzer.application.use_cases.list_identities import list_identities
+from git_contribution_analyzer.application.use_cases.list_runs import list_runs
+from git_contribution_analyzer.application.use_cases.map_identity import map_identity
+from git_contribution_analyzer.application.use_cases.run_doctor import run_doctor
+from git_contribution_analyzer.application.use_cases.uninit_project import uninit_project
+from git_contribution_analyzer.cli.exit_codes import ExitCode
+from git_contribution_analyzer.cli.output import emit_human, emit_json
+from git_contribution_analyzer.domain.errors import (
+    ConfigurationError,
+    IdentityResolutionError,
+    LlmProviderError,
+    NotARepositoryError,
+    ReportError,
+    WorkspaceError,
+)
+from git_contribution_analyzer.domain.models.analysis import AnalysisFilters
+
+app = typer.Typer(
+    name="gca",
+    help="Git contribution analysis with deterministic evidence and pluggable LLM providers.",
+    no_args_is_help=True,
+    pretty_exceptions_enable=False,
+)
+identities_app = typer.Typer(help="Inspect and confirm Git author identities.")
+runs_app = typer.Typer(help="Inspect persisted deterministic analysis runs.")
+providers_app = typer.Typer(help="Inspect and test pluggable LLM providers.")
+app.add_typer(identities_app, name="identities")
+app.add_typer(runs_app, name="runs")
+app.add_typer(providers_app, name="providers")
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(__version__)
+        raise typer.Exit(code=ExitCode.SUCCESS)
+
+
+@app.callback()
+def root(
+    version: Annotated[
+        bool | None,
+        typer.Option("--version", callback=_version_callback, is_eager=True, help="Show version."),
+    ] = None,
+) -> None:
+    """Git contribution analysis CLI."""
+
+
+def _exit_for_error(error: Exception) -> None:
+    if isinstance(error, NotARepositoryError):
+        emit_human(f"Error: {error}")
+        raise typer.Exit(code=ExitCode.NOT_A_REPOSITORY) from error
+    if isinstance(error, (WorkspaceError, ConfigurationError)):
+        emit_human(f"Error: {error}")
+        raise typer.Exit(code=ExitCode.WORKSPACE_ERROR) from error
+    if isinstance(error, IdentityResolutionError):
+        emit_human(f"Error: {error}")
+        raise typer.Exit(code=ExitCode.IDENTITY_AMBIGUOUS) from error
+    if isinstance(error, ReportError):
+        emit_human(f"Error: {error}")
+        raise typer.Exit(code=ExitCode.REPORT_ERROR) from error
+    if isinstance(error, LlmProviderError):
+        emit_human(f"Error: {error}")
+        raise typer.Exit(code=ExitCode.PROVIDER_ERROR) from error
+    raise error
+
+
+@app.command("init")
+def init_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+) -> None:
+    """Initialize a repository-local GCA workspace."""
+    try:
+        layout = init_project(path)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    emit_human(f"Initialized GCA workspace: {layout.root}")
+
+
+@app.command("status")
+def status_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Show repository and workspace status."""
+    try:
+        data = get_status(path)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="status", data=data))
+        return
+    emit_human(f"Repository: {data['repository']}")
+    emit_human(f"Workspace initialized: {str(data['workspaceInitialized']).lower()}")
+    emit_human(f"Database healthy: {str(data['databaseHealthy']).lower()}")
+    emit_human(f"Index status: {data['indexStatus']}")
+
+
+def _run_index_command(path: Path, *, full_rebuild: bool, json_output: bool) -> None:
+    try:
+        data = index_repository(path, full_rebuild=full_rebuild)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    command_name = "index" if full_rebuild else "sync"
+    if json_output:
+        emit_json(CommandEnvelope(command=command_name, data=data))
+        return
+    emit_human(
+        f"Indexed commits: {data['indexedCommits']} "
+        f"(new: {data['newCommits']}, identities: {data['identities']})"
+    )
+
+
+@app.command("index")
+def index_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Rebuild the Git history index from configured refs."""
+    _run_index_command(path, full_rebuild=True, json_output=json_output)
+
+
+@app.command("sync")
+def sync_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Incrementally synchronize new commits and changed refs."""
+    _run_index_command(path, full_rebuild=False, json_output=json_output)
+
+
+@app.command("analyze")
+def analyze_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    person: Annotated[str, typer.Option("--person", help="Confirmed person name or email.")] = "",
+    all_people: Annotated[
+        bool,
+        typer.Option(
+            "--all",
+            help="Analyze every Git person, including unconfirmed identities.",
+        ),
+    ] = False,
+    since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
+    until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
+    branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
+    release: Annotated[str | None, typer.Option("--release", help="Release tag.")] = None,
+    scope: Annotated[str | None, typer.Option("--scope", help="Repository path prefix.")] = None,
+    delivery: Annotated[
+        str | None,
+        typer.Option(
+            "--delivery",
+            help="AUTHORED_ONLY, LANDED, RELEASED, REVERTED, or DELIVERED.",
+        ),
+    ] = None,
+    no_llm: Annotated[
+        bool, typer.Option("--no-llm", help="Disable semantic LLM analysis.")
+    ] = False,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Analyze deterministic Git contribution evidence for one or all people."""
+    if person and all_people:
+        raise typer.BadParameter("--person and --all are mutually exclusive")
+    if not person and not all_people:
+        raise typer.BadParameter("Either --person or --all is required")
+    if all_people and not no_llm:
+        raise typer.BadParameter("--all currently requires --no-llm")
+    try:
+        repository = discover_repository(path)
+        config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+        filters = AnalysisFilters(
+            since=_parse_boundary(since, end_of_day=False),
+            until=_parse_boundary(until, end_of_day=True),
+            branch=branch,
+            release=release,
+            scope=scope,
+            delivery=delivery,
+        )
+        if all_people:
+            report = analyze_project(path, filters=filters)
+        else:
+            provider = None
+            if config.llm.enabled and not no_llm:
+                provider = build_provider(config.llm)
+            report = analyze_contributions(
+                path,
+                person_selector=person,
+                filters=filters,
+                llm_provider=provider,
+                allow_llm_fallback=config.llm.allow_fallback_to_rules,
+            )
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="analyze", data=report, warnings=report["warnings"]))
+        return
+    if report["reportType"] == "PROJECT":
+        emit_human(
+            f"Project analysis run {report['run']['id']}: "
+            f"{report['summary']['people']} people, "
+            f"{report['summary']['commits']} commits"
+        )
+    else:
+        emit_human(
+            f"Analysis run {report['run']['id']}: "
+            f"{report['summary']['commits']} commits, "
+            f"{len(report['contributionItems'])} contribution items"
+        )
+
+
+@app.command("assess")
+def assess_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    person: Annotated[str, typer.Option("--person", help="Confirmed person name or email.")] = "",
+    all_people: Annotated[
+        bool, typer.Option("--all", help="Assess every Git person independently.")
+    ] = False,
+    since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
+    until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
+    branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
+    release: Annotated[str | None, typer.Option("--release", help="Release tag.")] = None,
+    scope: Annotated[str | None, typer.Option("--scope", help="Repository path prefix.")] = None,
+    delivery: Annotated[
+        str | None, typer.Option("--delivery", help="Delivery status filter.")
+    ] = None,
+    no_llm: Annotated[
+        bool, typer.Option("--no-llm", help="Disable optional explanations.")
+    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Assess completed workload and deterministic engineering difficulty."""
+    if person and all_people:
+        raise typer.BadParameter("--person and --all are mutually exclusive")
+    if not person and not all_people:
+        raise typer.BadParameter("Either --person or --all is required")
+    try:
+        repository = discover_repository(path)
+        config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+        provider = (
+            build_provider(config.llm) if config.llm.enabled and not no_llm else None
+        )
+        report = assess_work(
+            path,
+            person_selector=person or None,
+            all_people=all_people,
+            filters=AnalysisFilters(
+                since=_parse_boundary(since, end_of_day=False),
+                until=_parse_boundary(until, end_of_day=True),
+                branch=branch,
+                release=release,
+                scope=scope,
+                delivery=delivery,
+            ),
+            llm_provider=provider,
+            allow_llm_fallback=config.llm.allow_fallback_to_rules,
+        )
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="assess", data=report, warnings=report["warnings"]))
+        return
+    workload = report["workloadSummary"]
+    emit_human(
+        f"Assessment run {report['run']['id']}: {workload['completedItems']} completed, "
+        f"{workload['pendingItems']} pending items"
+    )
+
+
+@app.command("resume")
+def resume_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    person: Annotated[str, typer.Option("--person", help="Confirmed person name or email.")] = "",
+    since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
+    until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
+    branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
+    release: Annotated[str | None, typer.Option("--release", help="Release tag.")] = None,
+    scope: Annotated[str | None, typer.Option("--scope", help="Repository path prefix.")] = None,
+    target_role: Annotated[str, typer.Option("--target-role", help="Target role context.")] = "",
+    language: Annotated[str, typer.Option("--language", help="zh-CN or en-US.")] = "zh-CN",
+    style: Annotated[str, typer.Option("--style", help="concise, star, or xyz.")] = "concise",
+    max_bullets: Annotated[int, typer.Option("--max-bullets", min=1, max=20)] = 6,
+    include_pending: Annotated[
+        bool, typer.Option("--include-pending", help="Include clearly marked pending work.")
+    ] = False,
+    verified_outcomes: Annotated[
+        Path | None,
+        typer.Option("--verified-outcomes", exists=True, dir_okay=False),
+    ] = None,
+    no_llm: Annotated[bool, typer.Option("--no-llm", help="Use conservative templates.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Generate evidence-backed resume candidates for one confirmed person."""
+    if not person:
+        raise typer.BadParameter("--person is required")
+    try:
+        repository = discover_repository(path)
+        config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+        provider = (
+            build_provider(config.llm) if config.llm.enabled and not no_llm else None
+        )
+        outcomes = (
+            load_verified_outcomes(verified_outcomes) if verified_outcomes is not None else ()
+        )
+        report = generate_resume(
+            path,
+            person_selector=person,
+            filters=AnalysisFilters(
+                since=_parse_boundary(since, end_of_day=False),
+                until=_parse_boundary(until, end_of_day=True),
+                branch=branch,
+                release=release,
+                scope=scope,
+            ),
+            target_role=target_role,
+            language=language,
+            style=style,
+            max_bullets=max_bullets,
+            include_pending=include_pending,
+            outcomes=outcomes,
+            llm_provider=provider,
+            allow_llm_fallback=config.llm.allow_fallback_to_rules,
+        )
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="resume", data=report, warnings=report["warnings"]))
+        return
+    emit_human(
+        f"Resume run {report['run']['id']}: {len(report['experienceBullets'])} candidates"
+    )
+
+
+
+def _parse_boundary(value: str | None, *, end_of_day: bool) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise typer.BadParameter(f"Invalid ISO date/time: {value}") from exc
+    if parsed.tzinfo is None:
+        if "T" not in value and end_of_day:
+            parsed = datetime.combine(parsed.date(), time.max)
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+@identities_app.command("list")
+def identities_list_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    unresolved: Annotated[
+        bool, typer.Option("--unresolved", help="Show only unresolved persons.")
+    ] = False,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """List normalized persons and their Git aliases."""
+    try:
+        data = list_identities(path, unresolved_only=unresolved)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="identities.list", data=data))
+        return
+    for person in data["persons"]:
+        marker = "confirmed" if person["confirmed"] else "unresolved"
+        emit_human(f"{person['name']} <{person['email']}> [{marker}]")
+        for alias in person["aliases"]:
+            emit_human(f"  - {alias['name']} <{alias['email']}> ({alias['source']})")
+
+
+@identities_app.command("map")
+def identities_map_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    name: Annotated[str, typer.Option("--name", help="Existing Git author name.")] = "",
+    email: Annotated[str, typer.Option("--email", help="Existing Git author email.")] = "",
+    person_name: Annotated[
+        str, typer.Option("--person-name", help="Canonical person name.")
+    ] = "",
+    person_email: Annotated[
+        str, typer.Option("--person-email", help="Canonical person email.")
+    ] = "",
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Confirm an alias mapping to a canonical person."""
+    if not all((name, email, person_name, person_email)):
+        raise typer.BadParameter("All identity mapping options are required")
+    try:
+        data = map_identity(
+            path,
+            name=name,
+            email=email,
+            person_name=person_name,
+            person_email=person_email,
+        )
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="identities.map", data=data))
+        return
+    person = data["person"]
+    emit_human(f"Mapped to {person['name']} <{person['email']}>")
+
+
+@runs_app.command("list")
+def runs_list_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """List persisted analysis runs."""
+    try:
+        data = list_runs(path)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="runs.list", data=data))
+        return
+    for run in data["runs"]:
+        emit_human(
+            f"{run['id']} [{run['runType']}/{run['status']}] {run['startedAt']}"
+        )
+
+
+@runs_app.command("show")
+def runs_show_command(
+    run_id: Annotated[str, typer.Argument(help="Analysis run ID or 'latest'.")],
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Show a persisted completed analysis run."""
+    try:
+        data = get_run(path, run_id)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="runs.show", data=data))
+        return
+    emit_human(f"Run: {data['run']['id']} [{data['run']['status']}]")
+    report_type = data.get("reportType")
+    if report_type in ("PERSON", "PROJECT"):
+        emit_human(f"Commits: {data['summary']['commits']}")
+    elif report_type == "WORK_ASSESSMENT":
+        emit_human(f"Completed items: {data['workloadSummary']['completedItems']}")
+    elif report_type == "RESUME":
+        emit_human(f"Resume candidates: {len(data['experienceBullets'])}")
+
+
+@providers_app.command("list")
+def providers_list_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """List built-in providers and the repository's selected provider."""
+    try:
+        repository = discover_repository(path)
+        config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    providers: list[dict[str, Any]] = [
+        {
+            "id": descriptor.provider_id,
+            "localExecution": descriptor.local_execution,
+            "requiresApiKey": descriptor.requires_api_key,
+            "selected": descriptor.provider_id == config.llm.provider,
+        }
+        for descriptor in provider_descriptors()
+    ]
+    data = {
+        "selected": config.llm.provider,
+        "enabled": config.llm.enabled,
+        "providers": providers,
+    }
+    if json_output:
+        emit_json(CommandEnvelope(command="providers.list", data=data))
+        return
+    for provider in providers:
+        marker = "selected" if provider["selected"] else "available"
+        locality = "local" if provider["localExecution"] else "remote"
+        emit_human(f"{provider['id']} [{marker}, {locality}]")
+
+
+@providers_app.command("test")
+def providers_test_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Test the selected provider's configuration and health endpoint."""
+    try:
+        repository = discover_repository(path)
+        config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+        provider = build_provider(config.llm)
+        healthy = provider.health_check()
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    data = {
+        "provider": provider.provider_id,
+        "model": provider.model,
+        "healthy": healthy,
+        "localExecution": provider.capabilities.local_execution,
+    }
+    if json_output:
+        emit_json(CommandEnvelope(command="providers.test", data=data, success=healthy))
+    else:
+        emit_human(f"Provider {provider.provider_id}: {'healthy' if healthy else 'unhealthy'}")
+    if not healthy:
+        raise typer.Exit(code=ExitCode.PROVIDER_ERROR)
+
+
+@app.command("report")
+def report_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    run_id: Annotated[str, typer.Option("--run", help="Analysis run ID or 'latest'.")] = "latest",
+    report_format: Annotated[
+        str, typer.Option("--format", help="Report format: markdown or json.")
+    ] = "markdown",
+    output: Annotated[
+        Path | None, typer.Option("--output", help="Write report to this file.")
+    ] = None,
+) -> None:
+    """Rebuild a Markdown or JSON report from a persisted analysis run."""
+    try:
+        rendered = generate_report(path, run_id, report_format)
+        if output is not None:
+            output.parent.mkdir(parents=True, exist_ok=True)
+            output.write_text(rendered, encoding="utf-8", newline="\n")
+            emit_human(f"Report written: {output.resolve()}")
+            return
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    typer.echo(rendered, nl=False)
+
+
+@app.command("doctor")
+def doctor_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Output versioned JSON.")
+    ] = False,
+) -> None:
+    """Diagnose Git, workspace, database, and lock health."""
+    try:
+        data = run_doctor(path)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="doctor", data=data, success=bool(data["healthy"])))
+        if not data["healthy"]:
+            raise typer.Exit(code=ExitCode.WORKSPACE_ERROR)
+        return
+    for check in data["checks"]:
+        marker = "OK" if check["healthy"] else "FAIL"
+        emit_human(f"[{marker}] {check['name']}: {check['detail']}")
+    if not data["healthy"]:
+        raise typer.Exit(code=ExitCode.WORKSPACE_ERROR)
+
+
+@app.command("uninit")
+def uninit_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    yes: Annotated[
+        bool, typer.Option("--yes", help="Delete without interactive confirmation.")
+    ] = False,
+) -> None:
+    """Remove the repository-local GCA workspace."""
+    if not yes and not typer.confirm("Remove the .gca workspace?"):
+        raise typer.Abort()
+    try:
+        removed = uninit_project(path)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    emit_human("Removed GCA workspace." if removed else "GCA workspace was not initialized.")
+
+
+def main() -> None:
+    app()
+
+
+if __name__ == "__main__":
+    main()

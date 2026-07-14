@@ -1,0 +1,1 @@
+Use a compact STAR structure, but omit result claims when no verified outcome is supplied.

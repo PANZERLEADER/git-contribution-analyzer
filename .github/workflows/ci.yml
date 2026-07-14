@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quality:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ["3.12", "3.13"]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Lint
+        run: python -m ruff check .
+      - name: Type check
+        run: python -m mypy src
+      - name: Test with coverage
+        run: python -m pytest --cov=git_contribution_analyzer --cov-report=term-missing
+      - name: Enforce core coverage
+        run: >-
+          python -m coverage report
+          --include="src/git_contribution_analyzer/application/*,src/git_contribution_analyzer/domain/*"
+          --fail-under=90
+      - name: Build package
+        run: python -m build
+      - name: Verify isolated wheel lifecycle
+        run: python scripts/verify_wheel.py
+      - name: CLI smoke test
+        run: gca --help
+
+  secrets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      GITLEAKS_VERSION: 8.24.3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Gitleaks
+        shell: bash
+        run: >-
+          curl -sSfL
+          "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          | tar -xz -C "${RUNNER_TEMP}" gitleaks
+      - name: Scan repository history for credentials
+        shell: bash
+        run: '"${RUNNER_TEMP}/gitleaks" git --redact --verbose .'

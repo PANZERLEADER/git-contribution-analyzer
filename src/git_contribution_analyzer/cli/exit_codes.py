@@ -1,0 +1,13 @@
+from enum import IntEnum
+
+
+class ExitCode(IntEnum):
+    SUCCESS = 0
+    INVALID_USAGE = 2
+    NOT_A_REPOSITORY = 3
+    WORKSPACE_ERROR = 4
+    IDENTITY_AMBIGUOUS = 5
+    PROVIDER_ERROR = 6
+    REPORT_ERROR = 7
+    INTERRUPTED = 8
+    INTERNAL_ERROR = 10

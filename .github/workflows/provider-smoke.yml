@@ -1,0 +1,23 @@
+name: Provider Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  openai-compatible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install .
+      - name: Initialize test workspace
+        run: gca init .
+      - name: Test Provider health
+        run: gca providers test . --json
+        env:
+          GCA_LLM_PROVIDER: openai-compatible
+          GCA_LLM_MODEL: gpt-4.1-mini
+          GCA_LLM_API_KEY: ${{ secrets.GCA_LLM_API_KEY }}

@@ -1,0 +1,1 @@
+Use a compact XYZ structure, but omit X or Y metrics when no verified outcome is supplied.

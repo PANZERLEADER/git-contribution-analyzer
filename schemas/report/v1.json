@@ -1,0 +1,275 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/report/v1.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "reportType",
+    "run",
+    "person",
+    "filters",
+    "summary",
+    "commitTypes",
+    "deliveryStatuses",
+    "modules",
+    "contributionItems",
+    "capabilities",
+    "technicalSummary",
+    "businessSummary",
+    "evidence",
+    "semantic",
+    "warnings",
+    "limitations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "reportType": { "const": "PERSON" },
+    "run": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "startedAt",
+        "completedAt",
+        "baselineCommit",
+        "ruleVersion",
+        "providerId",
+        "model",
+        "promptVersion",
+        "semanticSchemaVersion"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "enum": ["COMPLETED", "PARTIAL"] },
+        "startedAt": { "type": "string" },
+        "completedAt": { "type": "string" },
+        "baselineCommit": { "type": ["string", "null"] },
+        "ruleVersion": { "type": "string" },
+        "providerId": { "type": "string" },
+        "model": { "type": ["string", "null"] },
+        "promptVersion": { "type": ["string", "null"] },
+        "semanticSchemaVersion": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "person": {
+      "type": "object",
+      "required": ["id", "name", "email", "kind", "confirmed"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "kind": { "type": "string" },
+        "confirmed": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "filters": {
+      "type": "object",
+      "required": ["since", "until", "branch", "release", "scope", "delivery"],
+      "properties": {
+        "since": { "type": ["string", "null"] },
+        "until": { "type": ["string", "null"] },
+        "branch": { "type": ["string", "null"] },
+        "release": { "type": ["string", "null"] },
+        "scope": { "type": ["string", "null"] },
+        "delivery": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "commits",
+        "mergeCommits",
+        "filesChanged",
+        "insertions",
+        "deletions",
+        "binaryFiles",
+        "generatedFiles",
+        "firstAuthoredAt",
+        "lastAuthoredAt"
+      ],
+      "properties": {
+        "commits": { "type": "integer", "minimum": 0 },
+        "mergeCommits": { "type": "integer", "minimum": 0 },
+        "filesChanged": { "type": "integer", "minimum": 0 },
+        "insertions": { "type": "integer", "minimum": 0 },
+        "deletions": { "type": "integer", "minimum": 0 },
+        "binaryFiles": { "type": "integer", "minimum": 0 },
+        "generatedFiles": { "type": "integer", "minimum": 0 },
+        "firstAuthoredAt": { "type": ["string", "null"] },
+        "lastAuthoredAt": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "commitTypes": { "$ref": "#/$defs/countMap" },
+    "deliveryStatuses": { "$ref": "#/$defs/countMap" },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "commits"],
+        "properties": {
+          "name": { "type": "string" },
+          "commits": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "contributionItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "groupKey",
+          "title",
+          "confidence",
+          "commitHashes",
+          "commitTypes",
+          "deliveryStatuses",
+          "modules",
+          "paths",
+          "insertions",
+          "deletions",
+          "firstAuthoredAt",
+          "lastAuthoredAt",
+          "evidenceIds"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^CI-[0-9]{3,}$" },
+          "groupKey": { "type": "string" },
+          "title": { "type": "string" },
+          "confidence": { "enum": ["HIGH", "MEDIUM", "LOW"] },
+          "commitHashes": { "$ref": "#/$defs/stringArray" },
+          "commitTypes": { "$ref": "#/$defs/countMap" },
+          "deliveryStatuses": { "$ref": "#/$defs/countMap" },
+          "modules": { "$ref": "#/$defs/stringArray" },
+          "paths": { "$ref": "#/$defs/stringArray" },
+          "insertions": { "type": "integer", "minimum": 0 },
+          "deletions": { "type": "integer", "minimum": 0 },
+          "firstAuthoredAt": { "type": "string" },
+          "lastAuthoredAt": { "type": "string" },
+          "evidenceIds": { "$ref": "#/$defs/nonEmptyStringArray" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["capability", "confidence", "rationale", "evidenceIds", "gaps"],
+        "properties": {
+          "capability": { "type": "string" },
+          "confidence": { "enum": ["HIGH", "MEDIUM", "LOW"] },
+          "rationale": { "type": "string" },
+          "evidenceIds": { "$ref": "#/$defs/nonEmptyStringArray" },
+          "gaps": { "$ref": "#/$defs/stringArray" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "technicalSummary": { "$ref": "#/$defs/technicalSummary" },
+    "businessSummary": { "$ref": "#/$defs/businessSummary" },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "summary", "commitHashes", "paths", "metrics"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^EV-[0-9]{3,}$" },
+          "type": { "type": "string" },
+          "summary": { "type": "string" },
+          "commitHashes": { "$ref": "#/$defs/nonEmptyStringArray" },
+          "paths": { "$ref": "#/$defs/stringArray" },
+          "metrics": { "$ref": "#/$defs/countMap" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "semantic": {
+      "type": ["object", "null"],
+      "properties": {
+        "overallSummary": { "$ref": "#/$defs/semanticClaims" },
+        "contributionSummaries": { "type": "array" },
+        "capabilityExplanations": { "type": "array" },
+        "resumeBullets": { "$ref": "#/$defs/semanticClaims" }
+      },
+      "required": [
+        "overallSummary",
+        "contributionSummaries",
+        "capabilityExplanations",
+        "resumeBullets"
+      ],
+      "additionalProperties": false
+    },
+    "warnings": { "$ref": "#/$defs/stringArray" },
+    "limitations": { "$ref": "#/$defs/nonEmptyStringArray" }
+  },
+  "$defs": {
+    "countMap": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "semanticClaims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "evidenceIds", "confidence"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "evidenceIds": { "$ref": "#/$defs/nonEmptyStringArray" },
+          "confidence": { "enum": ["HIGH", "MEDIUM", "LOW"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "technicalSummary": {
+      "type": "object",
+      "required": ["headline", "dominantModules", "changeProfile", "capabilities", "highlights"],
+      "properties": {
+        "headline": { "type": "string" },
+        "dominantModules": { "type": "array" },
+        "changeProfile": { "type": "array" },
+        "capabilities": { "type": "array" },
+        "highlights": { "$ref": "#/$defs/deterministicHighlights" }
+      },
+      "additionalProperties": false
+    },
+    "businessSummary": {
+      "type": "object",
+      "required": ["headline", "domains", "highlights", "limitations"],
+      "properties": {
+        "headline": { "type": "string" },
+        "domains": { "type": "array" },
+        "highlights": { "$ref": "#/$defs/deterministicHighlights" },
+        "limitations": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "deterministicHighlights": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text", "evidenceIds"],
+        "properties": {
+          "text": { "type": "string" },
+          "evidenceIds": { "$ref": "#/$defs/nonEmptyStringArray" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

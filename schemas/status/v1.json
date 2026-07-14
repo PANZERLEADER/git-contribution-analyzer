@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/status/v1.json",
+  "type": "object",
+  "required": ["schemaVersion", "command", "success", "data", "warnings", "error"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "command": { "const": "status" },
+    "success": { "type": "boolean" },
+    "data": {
+      "type": "object",
+      "required": [
+        "repository",
+        "gitDir",
+        "workspace",
+        "workspaceInitialized",
+        "databaseHealthy",
+        "defaultBranch",
+        "toolVersion",
+        "schemaVersion",
+        "indexedCommit",
+        "indexedCommits",
+        "identities",
+        "unresolvedIdentities",
+        "refs",
+        "lastSync",
+        "indexStatus"
+      ],
+      "properties": {
+        "repository": { "type": "string" },
+        "gitDir": { "type": "string" },
+        "workspace": { "type": "string" },
+        "workspaceInitialized": { "type": "boolean" },
+        "databaseHealthy": { "type": "boolean" },
+        "defaultBranch": { "type": ["string", "null"] },
+        "toolVersion": { "type": ["string", "null"] },
+        "schemaVersion": { "type": ["string", "null"] },
+        "indexedCommit": { "type": ["string", "null"] },
+        "indexedCommits": { "type": "integer", "minimum": 0 },
+        "identities": { "type": "integer", "minimum": 0 },
+        "unresolvedIdentities": { "type": "integer", "minimum": 0 },
+        "refs": { "type": "integer", "minimum": 0 },
+        "lastSync": { "type": ["string", "null"] },
+        "indexStatus": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "error": {
+      "type": ["object", "null"],
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

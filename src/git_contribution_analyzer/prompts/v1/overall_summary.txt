@@ -1,0 +1,2 @@
+Write concise overall contribution summaries. Each claim must cite only supplied Evidence IDs.
+Describe observed engineering work, not business impact, performance ratings, or sole ownership.

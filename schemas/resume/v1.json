@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/resume/v1.json",
+  "type": "object",
+  "required": [
+    "schemaVersion", "reportType", "run", "snapshot", "person", "targetRole",
+    "language", "style", "projectSummaryCandidates", "experienceBullets", "skillEvidence",
+    "omittedClaims", "technicalSummary", "businessSummary", "evidence", "warnings", "limitations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "reportType": { "const": "RESUME" },
+    "run": { "type": "object" },
+    "snapshot": { "type": "object" },
+    "person": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": { "id": { "type": "string" }, "name": { "type": "string" } },
+      "additionalProperties": false
+    },
+    "targetRole": { "type": "string" },
+    "language": { "enum": ["zh-CN", "en-US"] },
+    "style": { "enum": ["concise", "star", "xyz"] },
+    "projectSummaryCandidates": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+    "experienceBullets": { "type": "array", "items": { "$ref": "#/$defs/claim" } },
+    "skillEvidence": { "type": "array", "items": { "type": "object" } },
+    "omittedClaims": { "type": "array", "items": { "type": "object" } },
+    "technicalSummary": { "type": "object" },
+    "businessSummary": { "type": "object" },
+    "evidence": { "type": "array", "items": { "type": "object" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "required": ["text", "claimStrength", "contributionItemIds", "evidenceIds", "verifiedOutcomeIds", "confidence", "pending"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1 },
+        "claimStrength": { "enum": ["CONTRIBUTED", "IMPLEMENTED", "LED"] },
+        "contributionItemIds": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "evidenceIds": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "verifiedOutcomeIds": { "type": "array", "items": { "type": "string" } },
+        "confidence": { "enum": ["HIGH", "MEDIUM", "LOW"] },
+        "pending": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

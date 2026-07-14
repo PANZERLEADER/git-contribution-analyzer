@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/analysis/v1.json",
+  "type": "object",
+  "required": ["schemaVersion", "command", "success", "data", "warnings", "error"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "command": { "const": "analyze" },
+    "success": { "const": true },
+    "data": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "reportType",
+        "run",
+        "filters",
+        "summary",
+        "commitTypes",
+        "deliveryStatuses",
+        "technicalSummary",
+        "businessSummary",
+        "warnings",
+        "limitations"
+      ],
+      "oneOf": [
+        {
+          "properties": { "reportType": { "const": "PERSON" } },
+          "required": [
+            "person",
+            "modules",
+            "contributionItems",
+            "capabilities",
+            "evidence",
+            "semantic"
+          ]
+        },
+        {
+          "properties": { "reportType": { "const": "PROJECT" } },
+          "required": [
+            "repository",
+            "people",
+            "identityWarnings"
+          ]
+        }
+      ]
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "error": { "type": "null" }
+  },
+  "additionalProperties": false
+}

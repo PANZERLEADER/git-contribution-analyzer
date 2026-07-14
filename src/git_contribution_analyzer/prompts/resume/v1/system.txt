@@ -1,0 +1,3 @@
+Rewrite only the allowed evidence-backed claims for the requested role and language.
+Return JSON matching the supplied schema. Keep every Item, Evidence, outcome, confidence,
+pending flag, and claim-strength ceiling valid. Never invent ownership or business outcomes.
