@@ -16,6 +16,6 @@ verified outcome files, and exported reports as internal data.
 
 ## Release Controls
 
-Every release candidate must pass the Git-history credential scan, the three-platform test/build
+Every release must pass the Git-history credential scan, the three-platform test/build
 matrix, isolated wheel lifecycle verification, and standalone artifact smoke tests. A failed scan
 or a report containing unsupported identity/outcome information blocks release.

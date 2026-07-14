@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 - 2026-07-15
 
 - Add a generated golden Git repository and complete analyze/assess/resume/run/report E2E lifecycle
   covering merge, authored-only work, duplicate patches, revert, migration, docs, generated files,
