@@ -37,6 +37,48 @@ def render_work_assessment_markdown(report: dict[str, Any]) -> str:
         lines.extend(["## Identity Warnings", ""])
         lines.extend(f"- {warning}" for warning in report["identityWarnings"])
         lines.append("")
+    ranking = report.get("ranking", {})
+    if ranking.get("enabled"):
+        lines.extend(["## Rankings", ""])
+        for dimension in ranking["dimensions"]:
+            lines.extend(
+                [
+                    f"### {dimension['dimension'].title()}",
+                    "",
+                    "| Rank | Person | Raw value | Confidence |",
+                    "|---:|---|---:|---|",
+                ]
+            )
+            people = {
+                subject["person"]["id"]: subject["person"]["name"]
+                for subject in report["subjects"]
+            }
+            for entry in dimension["entries"]:
+                lines.append(
+                    f"| {entry['rank']} | {people[entry['personId']]} | "
+                    f"{entry['rawValue']} | {entry['confidence']} |"
+                )
+            lines.append("")
+        composite = ranking.get("composite")
+        if composite:
+            lines.extend(
+                [
+                    "### Composite",
+                    "",
+                    "| Rank | Person | Total score |",
+                    "|---:|---|---:|",
+                ]
+            )
+            people = {
+                subject["person"]["id"]: subject["person"]["name"]
+                for subject in report["subjects"]
+            }
+            for entry in composite["entries"]:
+                lines.append(
+                    f"| {entry['totalRank']} | {people[entry['personId']]} | "
+                    f"{entry['totalScore']} |"
+                )
+            lines.append("")
     lines.extend(["## Evidence Index", ""])
     for entry in report["evidence"]:
         lines.append(

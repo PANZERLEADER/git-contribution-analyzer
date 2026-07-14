@@ -27,6 +27,7 @@ from git_contribution_analyzer.application.use_cases.analyze_contributions impor
 from git_contribution_analyzer.domain.errors import LlmProviderError
 from git_contribution_analyzer.domain.models.analysis import AnalysisFilters
 from git_contribution_analyzer.domain.models.person_selection import PersonSelection
+from git_contribution_analyzer.domain.models.ranking import RankingConfig
 from git_contribution_analyzer.domain.models.run import RunType
 from git_contribution_analyzer.domain.models.snapshot import EvidenceSnapshot, SnapshotSubject
 from git_contribution_analyzer.domain.models.work_assessment import (
@@ -37,6 +38,7 @@ from git_contribution_analyzer.domain.models.work_assessment import (
     WorkloadBaseline,
 )
 from git_contribution_analyzer.domain.services.difficulty_rules import assess_difficulty
+from git_contribution_analyzer.domain.services.ranking_rules import build_ranking
 from git_contribution_analyzer.domain.services.workload_rules import (
     assess_item_size,
     build_workload_baseline,
@@ -53,6 +55,8 @@ def assess_work(
     person_selectors: tuple[str, ...] = (),
     all_people: bool = False,
     exclude_selectors: tuple[str, ...] = (),
+    rank_by: tuple[str, ...] = (),
+    ranking_config: RankingConfig | None = None,
     filters: AnalysisFilters | None = None,
     clock: Clock | None = None,
     id_generator: IdGenerator | None = None,
@@ -103,6 +107,10 @@ def assess_work(
                 "all": all_people,
                 "excludePersons": list(exclude_selectors),
                 "selection": selection.as_dict(),
+                "rankBy": list(rank_by),
+                "rankingConfig": (
+                    ranking_config.as_dict() if ranking_config is not None else None
+                ),
                 "filters": active_filters.as_dict(),
                 "llm": llm_provider is not None,
             },
@@ -116,6 +124,8 @@ def assess_work(
                 started_at,
                 snapshot,
                 selection=selection,
+                rank_by=rank_by,
+                ranking_config=ranking_config,
             )
             status = "COMPLETED"
             provider_id = "none"
@@ -193,6 +203,8 @@ def _build_assessment_report(
     snapshot: EvidenceSnapshot,
     *,
     selection: PersonSelection,
+    rank_by: tuple[str, ...],
+    ranking_config: RankingConfig | None,
 ) -> dict[str, Any]:
     completed_items = tuple(
         item
@@ -247,14 +259,12 @@ def _build_assessment_report(
         },
         "snapshot": snapshot.as_reference(),
         "selection": selection.as_dict(),
-        "ranking": {
-            "enabled": False,
-            "ruleVersion": None,
-            "cohortFingerprint": None,
-            "dimensions": [],
-            "composite": None,
-            "config": None,
-        },
+        "ranking": build_ranking(
+            serialized_subjects,
+            rank_by,
+            snapshot_id=snapshot.id,
+            config=ranking_config,
+        ),
         "subjects": serialized_subjects,
         "workloadSummary": {
             "completedItems": len(completed),

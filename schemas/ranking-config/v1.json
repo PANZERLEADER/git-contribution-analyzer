@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/ranking-config/v1.json",
+  "type": "object",
+  "required": ["schemaVersion", "rankingRuleVersion", "weights", "normalization", "ties"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "rankingRuleVersion": { "const": "performance-ranking-v1" },
+    "weights": {
+      "type": "object",
+      "required": ["workload", "difficulty", "delivery"],
+      "properties": {
+        "workload": { "type": "number", "minimum": 0, "maximum": 1 },
+        "difficulty": { "type": "number", "minimum": 0, "maximum": 1 },
+        "delivery": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "normalization": { "const": "cohort-max" },
+    "ties": { "const": "dense" }
+  },
+  "additionalProperties": false
+}

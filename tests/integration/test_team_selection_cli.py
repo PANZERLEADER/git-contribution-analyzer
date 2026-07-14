@@ -171,3 +171,114 @@ def test_should_fail_before_creating_run_when_selection_is_empty(tmp_path: Path)
     assert result.exit_code == 5
     assert "no people" in result.stdout.casefold()
     assert json.loads(runs.stdout)["data"]["runs"] == []
+
+
+def test_should_rank_selected_people_by_repeatable_dimensions(tmp_path: Path) -> None:
+    repo = _repository(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "assess",
+            str(repo),
+            "--person",
+            "alice@example.com",
+            "--person",
+            "bob@example.com",
+            "--rank-by",
+            "workload",
+            "--rank-by",
+            "delivery",
+            "--no-llm",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    ranking = json.loads(result.stdout)["data"]["ranking"]
+    assert ranking["enabled"] is True
+    assert ranking["ruleVersion"] == "performance-ranking-v1"
+    assert [entry["dimension"] for entry in ranking["dimensions"]] == [
+        "workload",
+        "delivery",
+    ]
+    assert all(
+        entry["rawValue"].endswith(".0000")
+        for dimension in ranking["dimensions"]
+        for entry in dimension["entries"]
+    )
+
+
+def test_should_reject_duplicate_ranking_dimensions(tmp_path: Path) -> None:
+    repo = _repository(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "assess",
+            str(repo),
+            "--all",
+            "--rank-by",
+            "workload",
+            "--rank-by",
+            "workload",
+            "--no-llm",
+        ],
+    )
+
+    assert result.exit_code == 2
+
+
+def test_should_export_weighted_ranking_as_persisted_csv(tmp_path: Path) -> None:
+    repo = _repository(tmp_path)
+    config = tmp_path / "ranking.yml"
+    config.write_text(
+        """schemaVersion: "1.0"
+rankingRuleVersion: performance-ranking-v1
+weights:
+  workload: 0.45
+  difficulty: 0.35
+  delivery: 0.20
+normalization: cohort-max
+ties: dense
+""",
+        encoding="utf-8",
+    )
+    assessed = runner.invoke(
+        app,
+        [
+            "assess",
+            str(repo),
+            "--all",
+            "--ranking-config",
+            str(config),
+            "--no-llm",
+            "--json",
+        ],
+    )
+    assert assessed.exit_code == 0, assessed.stdout
+    report = json.loads(assessed.stdout)["data"]
+    output = tmp_path / "team.csv"
+
+    exported = runner.invoke(
+        app,
+        [
+            "report",
+            str(repo),
+            "--run",
+            report["run"]["id"],
+            "--format",
+            "csv",
+            "--output",
+            str(output),
+        ],
+    )
+
+    assert exported.exit_code == 0, exported.stdout
+    payload = output.read_bytes()
+    assert payload.startswith(b"\xef\xbb\xbf")
+    assert b"\r\n" in payload
+    text = payload.decode("utf-8-sig")
+    assert "total_score" in text
+    assert "person_email" not in text.splitlines()[0]
+    assert "@example.com" not in text

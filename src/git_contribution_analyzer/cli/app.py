@@ -15,6 +15,7 @@ from git_contribution_analyzer.adapters.llm.registry import (
 from git_contribution_analyzer.adapters.outcomes.yaml_loader import load_verified_outcomes
 from git_contribution_analyzer.adapters.workspace.config import load_config
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
+from git_contribution_analyzer.adapters.workspace.ranking_config import load_ranking_config
 from git_contribution_analyzer.application.dto.results import CommandEnvelope
 from git_contribution_analyzer.application.use_cases.analyze_contributions import (
     analyze_contributions,
@@ -49,6 +50,7 @@ from git_contribution_analyzer.domain.errors import (
     WorkspaceError,
 )
 from git_contribution_analyzer.domain.models.analysis import AnalysisFilters
+from git_contribution_analyzer.domain.services.ranking_rules import SUPPORTED_DIMENSIONS
 
 app = typer.Typer(
     name="gca",
@@ -270,6 +272,23 @@ def assess_command(
             help="Exclude a person ID, name, or email from --all. Repeatable.",
         ),
     ] = None,
+    rank_by: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--rank-by",
+            help="Rank by workload, difficulty, or delivery. Repeatable.",
+        ),
+    ] = None,
+    ranking_config: Annotated[
+        Path | None,
+        typer.Option(
+            "--ranking-config",
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            help="YAML weights for an optional composite score.",
+        ),
+    ] = None,
     since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
     until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
     branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
@@ -286,15 +305,26 @@ def assess_command(
     """Assess completed workload and deterministic engineering difficulty."""
     person_selectors = tuple(person or ())
     exclude_selectors = tuple(exclude_person or ())
+    ranking_dimensions = tuple(value.casefold() for value in (rank_by or ()))
     if person_selectors and all_people:
         raise typer.BadParameter("--person and --all are mutually exclusive")
     if not person_selectors and not all_people:
         raise typer.BadParameter("Either --person or --all is required")
     if exclude_selectors and not all_people:
         raise typer.BadParameter("--exclude-person requires --all")
+    if len(ranking_dimensions) != len(set(ranking_dimensions)):
+        raise typer.BadParameter("--rank-by dimensions must not be repeated")
+    unsupported_dimensions = set(ranking_dimensions) - set(SUPPORTED_DIMENSIONS)
+    if unsupported_dimensions:
+        raise typer.BadParameter(
+            "Unsupported --rank-by dimension: " + ", ".join(sorted(unsupported_dimensions))
+        )
     try:
         repository = discover_repository(path)
         config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+        active_ranking_config = (
+            load_ranking_config(ranking_config) if ranking_config is not None else None
+        )
         provider = (
             build_provider(config.llm) if config.llm.enabled and not no_llm else None
         )
@@ -303,6 +333,8 @@ def assess_command(
             person_selectors=person_selectors,
             all_people=all_people,
             exclude_selectors=exclude_selectors,
+            rank_by=ranking_dimensions,
+            ranking_config=active_ranking_config,
             filters=AnalysisFilters(
                 since=_parse_boundary(since, end_of_day=False),
                 until=_parse_boundary(until, end_of_day=True),
@@ -679,18 +711,24 @@ def report_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
     run_id: Annotated[str, typer.Option("--run", help="Analysis run ID or 'latest'.")] = "latest",
     report_format: Annotated[
-        str, typer.Option("--format", help="Report format: markdown or json.")
+        str, typer.Option("--format", help="Report format: markdown, json, or csv.")
     ] = "markdown",
     output: Annotated[
         Path | None, typer.Option("--output", help="Write report to this file.")
     ] = None,
+    include_email: Annotated[
+        bool, typer.Option("--include-email", help="Include email in CSV output.")
+    ] = False,
 ) -> None:
     """Rebuild a Markdown or JSON report from a persisted analysis run."""
     try:
-        rendered = generate_report(path, run_id, report_format)
+        rendered = generate_report(
+            path, run_id, report_format, include_email=include_email
+        )
         if output is not None:
             output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(rendered, encoding="utf-8", newline="\n")
+            newline = "" if report_format.casefold() == "csv" else "\n"
+            output.write_text(rendered, encoding="utf-8", newline=newline)
             emit_human(f"Report written: {output.resolve()}")
             return
     except Exception as exc:
