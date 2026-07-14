@@ -100,7 +100,13 @@ def assess_work(
             run_type=RunType.WORK_ASSESSMENT,
         )
         try:
-            report = _build_assessment_report(run_id, started_at, snapshot)
+            report = _build_assessment_report(
+                run_id,
+                started_at,
+                snapshot,
+                person_selector=person_selector,
+                all_people=all_people,
+            )
             status = "COMPLETED"
             provider_id = "none"
             if llm_provider is not None:
@@ -183,6 +189,9 @@ def _build_assessment_report(
     run_id: str,
     started_at: datetime,
     snapshot: EvidenceSnapshot,
+    *,
+    person_selector: str | None,
+    all_people: bool,
 ) -> dict[str, Any]:
     completed_items = tuple(
         item
@@ -219,7 +228,7 @@ def _build_assessment_report(
         if classify_completion(item) is CompletionBucket.COMPLETED
     )
     return {
-        "schemaVersion": "1.0",
+        "schemaVersion": "2.0",
         "reportType": "WORK_ASSESSMENT",
         "scopeType": snapshot.scope_type,
         "run": {
@@ -229,13 +238,32 @@ def _build_assessment_report(
             "status": "COMPLETED",
             "startedAt": started_at.isoformat(),
             "completedAt": started_at.isoformat(),
-            "ruleVersion": "work-assessment-v1",
+            "ruleVersion": "work-assessment-v2",
             "providerId": "none",
             "model": None,
             "promptVersion": None,
             "semanticSchemaVersion": None,
         },
         "snapshot": snapshot.as_reference(),
+        "selection": {
+            "mode": "ALL" if all_people else "EXPLICIT",
+            "requestedSelectors": [] if person_selector is None else [person_selector],
+            "includedPersonIds": sorted(
+                subject.person.id for subject in snapshot.subjects
+            ),
+            "exclusions": [],
+            "confirmedOnly": False,
+            "allowedKinds": ["HUMAN", "BOT"],
+            "warnings": [],
+        },
+        "ranking": {
+            "enabled": False,
+            "ruleVersion": None,
+            "cohortFingerprint": None,
+            "dimensions": [],
+            "composite": None,
+            "config": None,
+        },
         "subjects": serialized_subjects,
         "workloadSummary": {
             "completedItems": len(completed),

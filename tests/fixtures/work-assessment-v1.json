@@ -1,0 +1,73 @@
+{
+  "schemaVersion": "1.0",
+  "reportType": "WORK_ASSESSMENT",
+  "scopeType": "PERSON",
+  "run": {
+    "id": "legacy-run",
+    "runType": "WORK_ASSESSMENT",
+    "parentRunId": null,
+    "status": "COMPLETED",
+    "startedAt": "2026-01-01T00:00:00+00:00",
+    "completedAt": "2026-01-01T00:00:00+00:00",
+    "ruleVersion": "work-assessment-v1",
+    "providerId": "none",
+    "model": null,
+    "promptVersion": null,
+    "semanticSchemaVersion": null
+  },
+  "snapshot": {"id": "legacy-snapshot"},
+  "subjects": [
+    {
+      "person": {
+        "id": "person-1",
+        "name": "Legacy User",
+        "email": "legacy@example.invalid",
+        "kind": "HUMAN",
+        "confirmed": true
+      },
+      "completedWork": ["item-1"],
+      "pendingWork": [],
+      "rework": [],
+      "integrationWork": [],
+      "itemAssessments": [
+        {
+          "contributionItemId": "item-1",
+          "personId": "person-1",
+          "completionBucket": "COMPLETED",
+          "deliveryStatuses": ["DELIVERED"],
+          "workType": "feat",
+          "size": {"band": "SMALL"},
+          "difficulty": {"level": "ROUTINE"},
+          "engineeringSupport": [],
+          "evidenceIds": ["evidence-1"],
+          "warnings": []
+        }
+      ]
+    }
+  ],
+  "workloadSummary": {
+    "completedItems": 1,
+    "pendingItems": 0,
+    "reworkItems": 0,
+    "integrationItems": 0,
+    "sizeDistribution": {"SMALL": 1, "MEDIUM": 0, "LARGE": 0, "XLARGE": 0}
+  },
+  "difficultyDistribution": {"ROUTINE": 1, "STANDARD": 0, "COMPLEX": 0, "HIGH_RISK": 0},
+  "technicalSummary": {"headline": "Legacy technical summary.", "modules": [], "workTypes": {}},
+  "businessSummary": {"headline": "Legacy business summary.", "domains": []},
+  "evidence": [
+    {
+      "personId": "person-1",
+      "id": "evidence-1",
+      "type": "COMMIT",
+      "summary": "Legacy evidence.",
+      "commitHashes": ["0000000000000000000000000000000000000000"],
+      "paths": ["src/example.py"],
+      "metrics": {}
+    }
+  ],
+  "explanation": null,
+  "identityWarnings": [],
+  "warnings": [],
+  "limitations": ["Legacy limitation."]
+}

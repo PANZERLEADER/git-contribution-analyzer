@@ -73,17 +73,29 @@ def test_should_assess_person_and_replay_markdown(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     report = payload["data"]
     schema = json.loads(
-        (Path(__file__).parents[2] / "schemas/work-assessment/v1.json").read_text(
+        (Path(__file__).parents[2] / "schemas/work-assessment/v2.json").read_text(
             encoding="utf-8"
         )
     )
     validate(report, schema)
+    assert report["schemaVersion"] == "2.0"
     assert report["reportType"] == "WORK_ASSESSMENT"
     assert report["scopeType"] == "PERSON"
     assert report["run"]["runType"] == "WORK_ASSESSMENT"
     assert report["workloadSummary"]["completedItems"] >= 1
     assert report["technicalSummary"]["headline"]
     assert report["businessSummary"]["headline"]
+    assert report["selection"]["includedPersonIds"] == [
+        report["subjects"][0]["person"]["id"]
+    ]
+    assert report["ranking"] == {
+        "enabled": False,
+        "ruleVersion": None,
+        "cohortFingerprint": None,
+        "dimensions": [],
+        "composite": None,
+        "config": None,
+    }
 
     run_id = report["run"]["id"]
     runs = runner.invoke(app, ["runs", "list", str(repo), "--json"])
@@ -97,7 +109,7 @@ def test_should_assess_person_and_replay_markdown(tmp_path: Path) -> None:
     assert "Business Summary" in markdown.stdout
 
 
-def test_should_assess_all_without_ranking_people(tmp_path: Path) -> None:
+def test_should_assess_all_with_ranking_disabled(tmp_path: Path) -> None:
     repo = _initialized_repo(tmp_path)
 
     result = runner.invoke(
@@ -109,9 +121,9 @@ def test_should_assess_all_without_ranking_people(tmp_path: Path) -> None:
     assert report["scopeType"] == "PROJECT"
     assert len(report["subjects"]) == 2
     assert report["identityWarnings"]
-    rendered = json.dumps(report).casefold()
-    assert "ranking" not in rendered
-    assert "score" not in rendered
+    assert report["ranking"]["enabled"] is False
+    assert report["ranking"]["dimensions"] == []
+    assert "score" not in json.dumps(report).casefold()
 
 
 def test_should_add_optional_assessment_explanation_with_mock_provider(

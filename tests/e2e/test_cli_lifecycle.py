@@ -19,7 +19,7 @@ def test_should_show_help_and_version() -> None:
     assert help_result.exit_code == 0
     assert "Git contribution analysis" in help_result.stdout
     assert version_result.exit_code == 0
-    assert "0.1.0" in version_result.stdout
+    assert "0.2.0.dev0" in version_result.stdout
 
 
 def test_should_reject_init_when_path_is_not_repository(tmp_path: Path) -> None:

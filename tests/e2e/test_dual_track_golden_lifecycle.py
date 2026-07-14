@@ -75,7 +75,8 @@ def test_should_complete_dual_track_golden_lifecycle_in_unicode_path(
     project_report = json.loads(project_assessment.stdout)["data"]
     assert project_report["scopeType"] == "PROJECT"
     assert len(project_report["subjects"]) >= 2
-    assert "ranking" not in project_assessment.stdout.casefold()
+    assert project_report["ranking"]["enabled"] is False
+    assert project_report["ranking"]["dimensions"] == []
 
     resume = _run(
         "resume",

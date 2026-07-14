@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/work-assessment/v2.json",
+  "type": "object",
+  "required": [
+    "schemaVersion", "reportType", "scopeType", "run", "snapshot", "selection",
+    "ranking", "subjects", "workloadSummary", "difficultyDistribution",
+    "technicalSummary", "businessSummary", "evidence", "explanation",
+    "identityWarnings", "warnings", "limitations"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "2.0" },
+    "reportType": { "const": "WORK_ASSESSMENT" },
+    "scopeType": { "enum": ["PERSON", "PROJECT"] },
+    "run": {
+      "type": "object",
+      "required": ["id", "runType", "parentRunId", "status", "startedAt", "completedAt", "ruleVersion", "providerId"],
+      "properties": {
+        "id": { "type": "string" },
+        "runType": { "const": "WORK_ASSESSMENT" },
+        "parentRunId": { "type": ["string", "null"] },
+        "status": { "enum": ["COMPLETED", "PARTIAL"] },
+        "startedAt": { "type": "string" },
+        "completedAt": { "type": "string" },
+        "ruleVersion": { "const": "work-assessment-v2" },
+        "providerId": { "type": "string" },
+        "model": { "type": ["string", "null"] },
+        "promptVersion": { "type": ["string", "null"] },
+        "semanticSchemaVersion": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "snapshot": { "type": "object" },
+    "selection": {
+      "type": "object",
+      "required": ["mode", "requestedSelectors", "includedPersonIds", "exclusions", "confirmedOnly", "allowedKinds", "warnings"],
+      "properties": {
+        "mode": { "enum": ["EXPLICIT", "ALL"] },
+        "requestedSelectors": { "type": "array", "items": { "type": "string" } },
+        "includedPersonIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "exclusions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["selector", "personId", "reason"],
+            "properties": {
+              "selector": { "type": ["string", "null"] },
+              "personId": { "type": ["string", "null"] },
+              "reason": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "confirmedOnly": { "type": "boolean" },
+        "allowedKinds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "warnings": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "ranking": {
+      "type": "object",
+      "required": ["enabled", "ruleVersion", "cohortFingerprint", "dimensions", "composite", "config"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "ruleVersion": { "type": ["string", "null"] },
+        "cohortFingerprint": { "type": ["string", "null"] },
+        "dimensions": { "type": "array", "items": { "type": "object" } },
+        "composite": { "type": ["object", "null"] },
+        "config": { "type": ["object", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "subjects": { "type": "array", "items": { "type": "object" } },
+    "workloadSummary": { "type": "object" },
+    "difficultyDistribution": { "type": "object" },
+    "technicalSummary": { "type": "object" },
+    "businessSummary": { "type": "object" },
+    "evidence": { "type": "array", "items": { "type": "object" } },
+    "explanation": { "type": ["object", "null"] },
+    "identityWarnings": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}
