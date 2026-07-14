@@ -14,10 +14,16 @@ jobs:
         include:
           - os: windows-latest
             artifact: gca-windows-x86_64
+            standalone_source: dist/gca.exe
+            release_asset: dist/gca-windows-x86_64.exe
           - os: ubuntu-latest
             artifact: gca-linux-x86_64
+            standalone_source: dist/gca
+            release_asset: dist/gca-linux-x86_64
           - os: macos-latest
             artifact: gca-macos-x86_64
+            standalone_source: dist/gca
+            release_asset: dist/gca-macos-x86_64
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -45,11 +51,18 @@ jobs:
         run: pyinstaller --clean --noconfirm gca.spec
       - name: Verify standalone executable
         run: python scripts/verify_standalone.py
+      - name: Stage uniquely named standalone asset
+        env:
+          GCA_STANDALONE_SOURCE: ${{ matrix.standalone_source }}
+          GCA_RELEASE_ASSET: ${{ matrix.release_asset }}
+        run: >-
+          python -c "import os, shutil;
+          shutil.copy2(os.environ['GCA_STANDALONE_SOURCE'], os.environ['GCA_RELEASE_ASSET'])"
       - name: Upload standalone artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: dist/gca*
+          path: ${{ matrix.release_asset }}
           if-no-files-found: error
 
       - name: Upload Python packages

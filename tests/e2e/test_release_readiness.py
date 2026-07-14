@@ -48,6 +48,12 @@ def test_should_define_standalone_release_workflow() -> None:
     assert "pyinstaller" in workflow.casefold()
     assert "pipx" in workflow.casefold()
     assert "upload-artifact" in workflow
+    assert "gca-windows-x86_64.exe" in workflow
+    assert "gca-linux-x86_64" in workflow
+    assert "gca-macos-x86_64" in workflow
+    assert "gca-packages" in workflow
+    assert "SHA256SUMS.txt" in workflow
+    assert "gh release create" in workflow
     assert (ROOT / "gca.spec").is_file()
 
 
