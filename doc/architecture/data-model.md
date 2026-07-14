@@ -29,9 +29,11 @@ verified external inputs and LLM audit/cache records. Back up `index.sqlite` bef
 | `commit_delivery` | `AUTHORED_ONLY`, `LANDED`, `RELEASED` and `REVERTED` evidence |
 | `persons` | Canonical repository-scoped identities |
 | `identity_aliases` | Exact-email, mailmap and manual alias evidence |
+| `identity_merge_events` | Reversible Person merge snapshots and alias movements |
 
 Identity aliases are not fuzzily merged. A Person must be explicitly confirmed before resume
-generation.
+generation. Reversible merges retain inactive source Persons with a redirect to the active target;
+historical run JSON remains immutable.
 
 ## Analysis Tables
 

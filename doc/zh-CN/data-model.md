@@ -29,8 +29,10 @@
 | `commit_delivery` | `AUTHORED_ONLY`、`LANDED`、`RELEASED`、`REVERTED` 证据 |
 | `persons` | 仓库范围内的规范 Person 身份 |
 | `identity_aliases` | 精确邮箱、mailmap 和人工别名证据 |
+| `identity_merge_events` | 可逆 Person 合并快照和 alias 移动记录 |
 
-身份别名不会通过模糊名称自动合并。生成简历前，Person 必须经过显式确认。
+身份别名不会通过模糊名称自动合并。生成简历前，Person 必须经过显式确认。可逆合并会保留
+inactive source Person 并记录其 target redirect，历史 run JSON 保持不变。
 
 ## 分析表
 

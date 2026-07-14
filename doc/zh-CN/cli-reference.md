@@ -54,6 +54,18 @@ gca assess <repo> --all --exclude-person ci@example.com --no-llm --json
 `--exclude-person` 只能与 `--all` 组合。全员模式默认只纳入已确认的 `HUMAN` 身份，并在
 报告中记录其他身份的排除原因。规模与难度是带版本的分布，不是员工总分或排名。
 
+身份维护支持可逆合并：
+
+```powershell
+gca identities merge <repo> --source old@example.com --target person-id --dry-run --json
+gca identities merge <repo> --source old@example.com --target person-id --yes --json
+gca identities merges <repo> --json
+gca identities unmerge <repo> --merge-id <id> --yes --json
+```
+
+合并不会删除 source Person 或改写历史报告；它只把 alias 移到 target 供后续分析使用，并记录
+可撤销事件。若 alias 在合并后被再次映射，撤销会整体失败，避免部分恢复。
+
 ## 简历生成
 
 ```powershell

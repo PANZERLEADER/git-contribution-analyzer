@@ -57,6 +57,18 @@ versioned distributions, not an employee score or ranking. `--person` and `--exc
 repeatable. `--exclude-person` is valid only with `--all`; all-person selection includes confirmed
 `HUMAN` identities by default and records other identities as exclusions.
 
+Identity maintenance supports reversible merges:
+
+```powershell
+gca identities merge <repo> --source old@example.com --target person-id --dry-run --json
+gca identities merge <repo> --source old@example.com --target person-id --yes --json
+gca identities merges <repo> --json
+gca identities unmerge <repo> --merge-id <id> --yes --json
+```
+
+Merge keeps the source Person and historical reports. It moves aliases to the target for future
+analysis and records an event that can be reversed while those aliases remain unchanged.
+
 ## Resume
 
 ```powershell

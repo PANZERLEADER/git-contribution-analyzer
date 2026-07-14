@@ -29,6 +29,12 @@ from git_contribution_analyzer.application.use_cases.index_repository import ind
 from git_contribution_analyzer.application.use_cases.init_project import init_project
 from git_contribution_analyzer.application.use_cases.list_identities import list_identities
 from git_contribution_analyzer.application.use_cases.list_runs import list_runs
+from git_contribution_analyzer.application.use_cases.manage_identity_merges import (
+    list_identity_merges,
+    merge_identities,
+    preview_identity_merge,
+    unmerge_identities,
+)
 from git_contribution_analyzer.application.use_cases.map_identity import map_identity
 from git_contribution_analyzer.application.use_cases.run_doctor import run_doctor
 from git_contribution_analyzer.application.use_cases.uninit_project import uninit_project
@@ -421,7 +427,10 @@ def identities_list_command(
         emit_json(CommandEnvelope(command="identities.list", data=data))
         return
     for person in data["persons"]:
-        marker = "confirmed" if person["confirmed"] else "unresolved"
+        if not person["active"]:
+            marker = f"merged -> {person['mergedIntoPersonId']}"
+        else:
+            marker = "confirmed" if person["confirmed"] else "unresolved"
         emit_human(f"{person['name']} <{person['email']}> [{marker}]")
         for alias in person["aliases"]:
             emit_human(f"  - {alias['name']} <{alias['email']}> ({alias['source']})")
@@ -461,6 +470,92 @@ def identities_map_command(
         return
     person = data["person"]
     emit_human(f"Mapped to {person['name']} <{person['email']}>")
+
+
+@identities_app.command("merge")
+def identities_merge_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    source: Annotated[
+        list[str] | None,
+        typer.Option("--source", help="Source person selector. Repeatable."),
+    ] = None,
+    target: Annotated[str, typer.Option("--target", help="Target person selector.")] = "",
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Preview without changing identities.")
+    ] = False,
+    yes: Annotated[bool, typer.Option("--yes", help="Confirm the merge operation.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Preview or execute a reversible identity merge."""
+    sources = tuple(source or ())
+    if not sources or not target:
+        raise typer.BadParameter("--source and --target are required")
+    if dry_run == yes:
+        raise typer.BadParameter("Choose exactly one of --dry-run or --yes")
+    try:
+        data = (
+            preview_identity_merge(path, sources, target)
+            if dry_run
+            else merge_identities(path, sources, target)
+        )
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="identities.merge", data=data))
+        return
+    action = "preview" if dry_run else f"merge {data['mergeId']}"
+    emit_human(
+        f"Identity {action}: {len(data['sources'])} source person(s) -> "
+        f"{data['target']['name']}"
+    )
+
+
+@identities_app.command("merges")
+def identities_merges_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    status: Annotated[
+        str, typer.Option("--status", help="ACTIVE, REVERTED, or ALL.")
+    ] = "ALL",
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """List reversible identity merge events."""
+    normalized_status = status.upper()
+    if normalized_status not in {"ACTIVE", "REVERTED", "ALL"}:
+        raise typer.BadParameter("--status must be ACTIVE, REVERTED, or ALL")
+    try:
+        data = list_identity_merges(path, normalized_status)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="identities.merges", data=data))
+        return
+    for event in data["merges"]:
+        emit_human(
+            f"{event['mergeId']} [{event['status']}] -> {event['targetPersonId']}"
+        )
+
+
+@identities_app.command("unmerge")
+def identities_unmerge_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    merge_id: Annotated[str, typer.Option("--merge-id", help="Merge event ID.")] = "",
+    yes: Annotated[bool, typer.Option("--yes", help="Confirm the unmerge operation.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Reverse an active identity merge event."""
+    if not merge_id or not yes:
+        raise typer.BadParameter("--merge-id and --yes are required")
+    try:
+        data = unmerge_identities(path, merge_id)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="identities.unmerge", data=data))
+        return
+    emit_human(f"Identity merge {merge_id} reverted")
 
 
 @runs_app.command("list")

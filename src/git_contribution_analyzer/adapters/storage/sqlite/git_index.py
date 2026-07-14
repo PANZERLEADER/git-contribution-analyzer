@@ -354,6 +354,8 @@ class SqliteGitIndexStore:
                             "email": person["canonical_email"],
                             "kind": person["kind"],
                             "confirmed": bool(person["confirmed"]),
+                            "active": bool(person["active"]),
+                            "mergedIntoPersonId": person["merged_into_person_id"],
                             "aliases": [
                                 {
                                     "id": alias["id"],
@@ -437,7 +439,11 @@ class SqliteGitIndexStore:
                     )
                 ).scalar_one()
                 if remaining == 0 and old_person_id != person_id:
-                    connection.execute(delete(persons).where(persons.c.id == old_person_id))
+                    connection.execute(
+                        update(persons)
+                        .where(persons.c.id == old_person_id)
+                        .values(active=False, merged_into_person_id=person_id)
+                    )
                 return {
                     "id": person_id,
                     "name": person_name,

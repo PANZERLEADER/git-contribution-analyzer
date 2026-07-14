@@ -136,8 +136,25 @@ persons = Table(
     Column("canonical_email", String, nullable=False),
     Column("kind", String(20), nullable=False, default="HUMAN"),
     Column("confirmed", Boolean, nullable=False, default=False),
+    Column("active", Boolean, nullable=False, default=True),
+    Column("merged_into_person_id", String(36), nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     UniqueConstraint("repository_id", "canonical_email", name="uq_person_repository_email"),
+)
+
+identity_merge_events = Table(
+    "identity_merge_events",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column("repository_id", String(36), ForeignKey("repositories.id"), nullable=False),
+    Column("event_type", String(20), nullable=False),
+    Column("target_person_id", String(36), ForeignKey("persons.id"), nullable=False),
+    Column("source_person_ids_json", Text, nullable=False),
+    Column("moved_alias_ids_json", Text, nullable=False),
+    Column("source_snapshots_json", Text, nullable=False),
+    Column("status", String(20), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("reverted_at", DateTime(timezone=True), nullable=True),
 )
 
 identity_aliases = Table(

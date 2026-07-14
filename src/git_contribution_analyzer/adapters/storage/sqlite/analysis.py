@@ -71,6 +71,7 @@ class SqliteAnalysisStore:
                     select(persons).where(persons.c.repository_id == repository["id"])
                     ).mappings()
                 )
+                people_by_id = {str(row["id"]): dict(row) for row in person_rows}
                 aliases_by_person: dict[str, list[tuple[str, str]]] = {}
                 for person_row in person_rows:
                     aliases = connection.execute(
@@ -107,6 +108,20 @@ class SqliteAnalysisStore:
                     f"Person selector must match exactly one identity: {selector}"
                 )
             selected = next(iter(unique.values()))
+            visited: set[str] = set()
+            while not bool(selected["active"]):
+                selected_id = str(selected["id"])
+                if selected_id in visited:
+                    raise IdentityResolutionError(
+                        f"Identity redirect cycle detected: {selector}"
+                    )
+                visited.add(selected_id)
+                redirect_id = selected["merged_into_person_id"]
+                if redirect_id is None or str(redirect_id) not in people_by_id:
+                    raise IdentityResolutionError(
+                        f"Inactive identity has no valid redirect: {selector}"
+                    )
+                selected = people_by_id[str(redirect_id)]
             if require_confirmed and not bool(selected["confirmed"]):
                 raise IdentityResolutionError(
                     f"Identity is not confirmed: {selected['canonical_name']} "
@@ -130,7 +145,10 @@ class SqliteAnalysisStore:
                 repository = self._repository(connection)
                 rows = connection.execute(
                     select(persons)
-                    .where(persons.c.repository_id == repository["id"])
+                    .where(
+                        persons.c.repository_id == repository["id"],
+                        persons.c.active.is_(True),
+                    )
                     .order_by(persons.c.canonical_name, persons.c.canonical_email)
                 ).mappings()
                 result = []
@@ -147,6 +165,8 @@ class SqliteAnalysisStore:
                             "email": str(row["canonical_email"]),
                             "kind": str(row["kind"]),
                             "confirmed": bool(row["confirmed"]),
+                            "active": bool(row["active"]),
+                            "mergedIntoPersonId": row["merged_into_person_id"],
                             "aliases": [
                                 {"name": str(name), "email": str(email)}
                                 for name, email in aliases
