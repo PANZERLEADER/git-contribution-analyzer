@@ -63,10 +63,13 @@ gca analyze D:\path\to\repository --all --no-llm --json
 # 评估已完成工作量和确定性工程难度。
 gca assess D:\path\to\repository `
   --person alice@example.com `
+  --person bob@example.com `
   --since 2026-01-01 `
   --no-llm `
   --json
-gca assess D:\path\to\repository --all --no-llm --json
+gca assess D:\path\to\repository --all `
+  --exclude-person ci@example.com `
+  --no-llm --json
 
 # 为一个已确认人员生成有 Evidence 引用的简历候选内容。
 gca resume D:\path\to\repository `

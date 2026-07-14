@@ -250,10 +250,20 @@ def analyze_command(
 @app.command("assess")
 def assess_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    person: Annotated[str, typer.Option("--person", help="Confirmed person name or email.")] = "",
+    person: Annotated[
+        list[str] | None,
+        typer.Option("--person", help="Confirmed person ID, name, or email. Repeatable."),
+    ] = None,
     all_people: Annotated[
         bool, typer.Option("--all", help="Assess every Git person independently.")
     ] = False,
+    exclude_person: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--exclude-person",
+            help="Exclude a person ID, name, or email from --all. Repeatable.",
+        ),
+    ] = None,
     since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
     until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
     branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
@@ -268,10 +278,14 @@ def assess_command(
     json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Assess completed workload and deterministic engineering difficulty."""
-    if person and all_people:
+    person_selectors = tuple(person or ())
+    exclude_selectors = tuple(exclude_person or ())
+    if person_selectors and all_people:
         raise typer.BadParameter("--person and --all are mutually exclusive")
-    if not person and not all_people:
+    if not person_selectors and not all_people:
         raise typer.BadParameter("Either --person or --all is required")
+    if exclude_selectors and not all_people:
+        raise typer.BadParameter("--exclude-person requires --all")
     try:
         repository = discover_repository(path)
         config = load_config(WorkspaceLayout.for_repository(repository.root).config)
@@ -280,8 +294,9 @@ def assess_command(
         )
         report = assess_work(
             path,
-            person_selector=person or None,
+            person_selectors=person_selectors,
             all_people=all_people,
+            exclude_selectors=exclude_selectors,
             filters=AnalysisFilters(
                 since=_parse_boundary(since, end_of_day=False),
                 until=_parse_boundary(until, end_of_day=True),

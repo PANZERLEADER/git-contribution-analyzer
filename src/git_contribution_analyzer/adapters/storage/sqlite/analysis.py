@@ -52,48 +52,76 @@ class SqliteAnalysisStore:
         return dict(row)
 
     def resolve_confirmed_person(self, selector: str) -> dict[str, Any]:
+        return self.resolve_people((selector,), require_confirmed=True)[0]
+
+    def resolve_people(
+        self,
+        selectors: tuple[str, ...],
+        *,
+        require_confirmed: bool,
+    ) -> list[dict[str, Any]]:
+        if not selectors:
+            return []
         engine = create_database_engine(self.database_path)
         try:
             with engine.connect() as connection:
                 repository = self._repository(connection)
-                person_rows = connection.execute(
+                person_rows = list(
+                    connection.execute(
                     select(persons).where(persons.c.repository_id == repository["id"])
-                ).mappings()
-                matches: list[dict[str, Any]] = []
-                needle = selector.strip().casefold()
+                    ).mappings()
+                )
+                aliases_by_person: dict[str, list[tuple[str, str]]] = {}
                 for person_row in person_rows:
                     aliases = connection.execute(
                         select(identity_aliases.c.name, identity_aliases.c.email).where(
                             identity_aliases.c.person_id == person_row["id"]
                         )
                     ).all()
-                    values = {
-                        str(person_row["canonical_name"]).casefold(),
-                        str(person_row["canonical_email"]).casefold(),
-                        *(str(value).casefold() for alias in aliases for value in alias),
-                    }
-                    if needle in values:
-                        matches.append(dict(person_row))
+                    aliases_by_person[str(person_row["id"])] = [
+                        (str(name), str(email)) for name, email in aliases
+                    ]
         finally:
             engine.dispose()
-        unique = {str(person["id"]): person for person in matches}
-        if len(unique) != 1:
-            raise IdentityResolutionError(
-                f"Person selector must match exactly one identity: {selector}"
+        resolved: list[dict[str, Any]] = []
+        for selector in selectors:
+            needle = selector.strip().casefold()
+            matches = []
+            for person_row in person_rows:
+                person_id = str(person_row["id"])
+                values = {
+                    person_id.casefold(),
+                    str(person_row["canonical_name"]).casefold(),
+                    str(person_row["canonical_email"]).casefold(),
+                    *(
+                        value.casefold()
+                        for alias in aliases_by_person[person_id]
+                        for value in alias
+                    ),
+                }
+                if needle in values:
+                    matches.append(dict(person_row))
+            unique = {str(person["id"]): person for person in matches}
+            if len(unique) != 1:
+                raise IdentityResolutionError(
+                    f"Person selector must match exactly one identity: {selector}"
+                )
+            selected = next(iter(unique.values()))
+            if require_confirmed and not bool(selected["confirmed"]):
+                raise IdentityResolutionError(
+                    f"Identity is not confirmed: {selected['canonical_name']} "
+                    f"<{selected['canonical_email']}>"
+                )
+            resolved.append(
+                {
+                    "id": str(selected["id"]),
+                    "name": str(selected["canonical_name"]),
+                    "email": str(selected["canonical_email"]),
+                    "kind": str(selected["kind"]),
+                    "confirmed": bool(selected["confirmed"]),
+                }
             )
-        selected = next(iter(unique.values()))
-        if not bool(selected["confirmed"]):
-            raise IdentityResolutionError(
-                f"Identity is not confirmed: {selected['canonical_name']} "
-                f"<{selected['canonical_email']}>"
-            )
-        return {
-            "id": str(selected["id"]),
-            "name": str(selected["canonical_name"]),
-            "email": str(selected["canonical_email"]),
-            "kind": str(selected["kind"]),
-            "confirmed": True,
-        }
+        return resolved
 
     def list_people_for_analysis(self) -> list[dict[str, Any]]:
         engine = create_database_engine(self.database_path)

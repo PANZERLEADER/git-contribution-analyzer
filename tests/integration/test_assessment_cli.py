@@ -119,8 +119,9 @@ def test_should_assess_all_with_ranking_disabled(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.stdout
     report = json.loads(result.stdout)["data"]
     assert report["scopeType"] == "PROJECT"
-    assert len(report["subjects"]) == 2
-    assert report["identityWarnings"]
+    assert len(report["subjects"]) == 1
+    assert report["identityWarnings"] == []
+    assert report["selection"]["exclusions"][0]["reason"] == "UNCONFIRMED"
     assert report["ranking"]["enabled"] is False
     assert report["ranking"]["dimensions"] == []
     assert "score" not in json.dumps(report).casefold()

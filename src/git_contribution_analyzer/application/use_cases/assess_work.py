@@ -22,9 +22,11 @@ from git_contribution_analyzer.application.services.evidence_snapshot import (
     build_evidence_snapshot,
     build_snapshot_subject,
 )
+from git_contribution_analyzer.application.services.person_selection import select_people
 from git_contribution_analyzer.application.use_cases.analyze_contributions import _branch_hashes
 from git_contribution_analyzer.domain.errors import LlmProviderError
 from git_contribution_analyzer.domain.models.analysis import AnalysisFilters
+from git_contribution_analyzer.domain.models.person_selection import PersonSelection
 from git_contribution_analyzer.domain.models.run import RunType
 from git_contribution_analyzer.domain.models.snapshot import EvidenceSnapshot, SnapshotSubject
 from git_contribution_analyzer.domain.models.work_assessment import (
@@ -48,8 +50,9 @@ IdGenerator = Callable[[], str]
 def assess_work(
     path: Path,
     *,
-    person_selector: str | None = None,
+    person_selectors: tuple[str, ...] = (),
     all_people: bool = False,
+    exclude_selectors: tuple[str, ...] = (),
     filters: AnalysisFilters | None = None,
     clock: Clock | None = None,
     id_generator: IdGenerator | None = None,
@@ -69,29 +72,37 @@ def assess_work(
     allowed_hashes = _branch_hashes(repository.root, active_filters.branch)
 
     with workspace_lock(layout.locks / "workspace.lock"):
+        people, selection = select_people(
+            store,
+            person_selectors=person_selectors,
+            all_people=all_people,
+            exclude_selectors=exclude_selectors,
+        )
         subjects, identity_warnings = _load_subjects(
             store,
             active_filters,
             allowed_hashes,
-            person_selector=person_selector,
-            all_people=all_people,
+            people=people,
         )
+        scope_type = "PROJECT" if all_people or len(subjects) > 1 else "PERSON"
         snapshot = build_evidence_snapshot(
             repository_root=repository.root,
             baseline_commit=baseline,
             filters=active_filters,
-            scope_type="PROJECT" if all_people else "PERSON",
+            scope_type=scope_type,
             subjects=subjects,
             identity_warnings=identity_warnings,
             created_at=started_at,
         )
-        person_id = None if all_people else snapshot.subjects[0].person.id
+        person_id = snapshot.subjects[0].person.id if scope_type == "PERSON" else None
         store.start_run(
             run_id=run_id,
             person_id=person_id,
             parameters={
-                "person": person_selector,
+                "persons": list(person_selectors),
                 "all": all_people,
+                "excludePersons": list(exclude_selectors),
+                "selection": selection.as_dict(),
                 "filters": active_filters.as_dict(),
                 "llm": llm_provider is not None,
             },
@@ -104,8 +115,7 @@ def assess_work(
                 run_id,
                 started_at,
                 snapshot,
-                person_selector=person_selector,
-                all_people=all_people,
+                selection=selection,
             )
             status = "COMPLETED"
             provider_id = "none"
@@ -165,20 +175,12 @@ def _load_subjects(
     filters: AnalysisFilters,
     allowed_hashes: set[str] | None,
     *,
-    person_selector: str | None,
-    all_people: bool,
+    people: tuple[dict[str, Any], ...],
 ) -> tuple[tuple[SnapshotSubject, ...], tuple[str, ...]]:
-    people = (
-        store.list_people_for_analysis()
-        if all_people
-        else [store.resolve_confirmed_person(person_selector or "")]
-    )
     subjects: list[SnapshotSubject] = []
     warnings: list[str] = []
     for person in people:
         commits = store.load_commits(str(person["id"]), filters, allowed_hashes=allowed_hashes)
-        if not commits and all_people:
-            continue
         subjects.append(build_snapshot_subject(person, commits))
         if not bool(person["confirmed"]):
             warnings.append(f"Unconfirmed identity: {person['name']} ({person['id']}).")
@@ -190,8 +192,7 @@ def _build_assessment_report(
     started_at: datetime,
     snapshot: EvidenceSnapshot,
     *,
-    person_selector: str | None,
-    all_people: bool,
+    selection: PersonSelection,
 ) -> dict[str, Any]:
     completed_items = tuple(
         item
@@ -245,17 +246,7 @@ def _build_assessment_report(
             "semanticSchemaVersion": None,
         },
         "snapshot": snapshot.as_reference(),
-        "selection": {
-            "mode": "ALL" if all_people else "EXPLICIT",
-            "requestedSelectors": [] if person_selector is None else [person_selector],
-            "includedPersonIds": sorted(
-                subject.person.id for subject in snapshot.subjects
-            ),
-            "exclusions": [],
-            "confirmedOnly": False,
-            "allowedKinds": ["HUMAN", "BOT"],
-            "warnings": [],
-        },
+        "selection": selection.as_dict(),
         "ranking": {
             "enabled": False,
             "ruleVersion": None,

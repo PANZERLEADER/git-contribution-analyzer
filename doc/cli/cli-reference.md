@@ -48,11 +48,14 @@ Common filters are `--since`, `--until`, `--branch`, `--release`, `--scope` and 
 
 ```powershell
 gca assess <repo> --person alice@example.com --no-llm --json
-gca assess <repo> --all --no-llm --json
+gca assess <repo> --person alice@example.com --person bob@example.com --no-llm --json
+gca assess <repo> --all --exclude-person ci@example.com --no-llm --json
 ```
 
 The result separates completed, pending, rework and integration activity. Size and difficulty are
-versioned distributions, not an employee score or ranking.
+versioned distributions, not an employee score or ranking. `--person` and `--exclude-person` are
+repeatable. `--exclude-person` is valid only with `--all`; all-person selection includes confirmed
+`HUMAN` identities by default and records other identities as exclusions.
 
 ## Resume
 
