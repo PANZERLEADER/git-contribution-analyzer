@@ -1,5 +1,7 @@
 # Installation, Upgrade And Removal
 
+[简体中文](../zh-CN/installation.md)
+
 ## Prerequisites
 
 - Git available on `PATH`.

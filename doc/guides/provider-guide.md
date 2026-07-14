@@ -1,5 +1,7 @@
 # LLM Provider Guide
 
+[简体中文](../zh-CN/provider-guide.md)
+
 ## Boundary
 
 GCA computes Git facts, delivery status, Contribution Items, Evidence, and rule-based capability

@@ -1,5 +1,7 @@
 # Privacy And Data Boundaries
 
+[简体中文](../zh-CN/privacy.md)
+
 ## Local Data
 
 By default, indexing, identity normalization, deterministic analysis, assessment and resume

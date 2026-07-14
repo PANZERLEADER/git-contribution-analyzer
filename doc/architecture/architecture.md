@@ -1,5 +1,7 @@
 # GCA Architecture
 
+[简体中文](../zh-CN/architecture.md)
+
 ## Goals
 
 GCA is a CLI-first, local Git analysis tool. Deterministic Git facts and versioned rules are the

@@ -1,5 +1,7 @@
 # GCA CLI Reference
 
+[简体中文](../zh-CN/cli-reference.md)
+
 ## Global Options
 
 | Option | Meaning |

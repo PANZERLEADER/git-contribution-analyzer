@@ -1,5 +1,7 @@
 # Git Contribution Analyzer
 
+[简体中文](README.zh-CN.md)
+
 `gca` is a CLI-first tool for evidence-backed Git contribution analysis. It separates
 deterministic repository facts from rule-based and LLM-assisted interpretation.
 
@@ -224,6 +226,7 @@ remains readable during 1.x but is deprecated; new integrations should use `gca 
 
 ## Documentation
 
+- [Simplified Chinese documentation](doc/zh-CN/README.md)
 - [Architecture](doc/architecture/architecture.md)
 - [Data model and migrations](doc/architecture/data-model.md)
 - [CLI reference](doc/cli/cli-reference.md)

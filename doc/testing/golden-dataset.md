@@ -1,5 +1,7 @@
 # Golden Dataset
 
+[简体中文](../zh-CN/golden-dataset.md)
+
 ## Purpose
 
 The golden repository is generated at test time with real Git commands. It fixes the behavioral

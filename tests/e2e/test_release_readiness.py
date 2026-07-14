@@ -60,6 +60,7 @@ def test_should_define_standalone_release_workflow() -> None:
 def test_should_not_publish_real_identity_or_machine_paths_in_documentation() -> None:
     documents = [
         ROOT / "README.md",
+        ROOT / "README.zh-CN.md",
         ROOT / "CHANGELOG.md",
         ROOT / "SECURITY.md",
         *(ROOT / "doc").rglob("*.md"),

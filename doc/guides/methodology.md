@@ -1,5 +1,7 @@
 # Assessment And Resume Methodology
 
+[简体中文](../zh-CN/methodology.md)
+
 ## Evidence Boundary
 
 GCA observes Git commits, refs, parent relationships, patch IDs, file changes, release tags and

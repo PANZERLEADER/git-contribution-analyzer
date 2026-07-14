@@ -1,5 +1,7 @@
 # GCA Data Model
 
+[简体中文](../zh-CN/data-model.md)
+
 ## Workspace
 
 Each analyzed repository owns a `.gca/` workspace:

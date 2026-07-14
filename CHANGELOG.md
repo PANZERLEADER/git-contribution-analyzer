@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add Simplified Chinese documentation for installation, CLI usage, architecture, data model,
+  assessment/resume methodology, privacy, LLM Providers, golden tests, and the 0.1.0 release.
+
 ## 0.1.0 - 2026-07-15
 
 - Add a generated golden Git repository and complete analyze/assess/resume/run/report E2E lifecycle
