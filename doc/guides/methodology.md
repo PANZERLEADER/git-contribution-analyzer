@@ -38,6 +38,20 @@ with a rework penalty capped at 30%. Values use Decimal arithmetic, four decimal
 ties. An optional YAML configuration applies cohort-max normalization and explicit weights that
 must sum exactly to `1.0`. Scores cannot be compared across different cohorts or configurations.
 
+## Time Bases And Periods
+
+- `AUTHORED` is the author timestamp; `COMMITTED` is the committer timestamp.
+- `LANDED` is the first target-branch first-parent integration point containing the commit.
+- `MERGED` is the merge commit that introduces the commit; direct commits have no merged time.
+- `RELEASED` is the first associated tag creatordate: tagger time for annotated tags and target
+  commit time for lightweight tags.
+
+Weeks start on Monday; months and quarters follow the calendar. Partial boundary periods are
+marked. Period-over-period uses the preceding emitted period. Year-over-year is calculated only
+when the series contains the corresponding prior-year period. Comparisons require the same
+repository, cohort, filters, and rule versions. Git timestamps are normalized to UTC; rebuild an
+existing index once after upgrading.
+
 ## Resume Claims
 
 - `CONTRIBUTED`: contribution evidence exists, but responsibility boundaries are incomplete.

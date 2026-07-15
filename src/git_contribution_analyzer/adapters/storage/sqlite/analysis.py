@@ -198,6 +198,8 @@ class SqliteAnalysisStore:
         filters: AnalysisFilters,
         *,
         allowed_hashes: set[str] | None = None,
+        integration_times: dict[str, tuple[datetime, datetime | None]] | None = None,
+        release_times: dict[str, datetime] | None = None,
     ) -> tuple[ContributionCommit, ...]:
         engine = create_database_engine(self.database_path)
         try:
@@ -209,6 +211,7 @@ class SqliteAnalysisStore:
                         commits.c.hash,
                         commits.c.subject,
                         commits.c.authored_at,
+                        commits.c.committed_at,
                         commits.c.insertions,
                         commits.c.deletions,
                         commits.c.files_changed,
@@ -236,10 +239,14 @@ class SqliteAnalysisStore:
                     )
                     .order_by(commits.c.authored_at, commits.c.hash)
                 )
-                if filters.since:
-                    statement = statement.where(commits.c.authored_at >= filters.since)
-                if filters.until:
-                    statement = statement.where(commits.c.authored_at <= filters.until)
+                time_column = {
+                    "AUTHORED": commits.c.authored_at,
+                    "COMMITTED": commits.c.committed_at,
+                }.get(filters.time_basis)
+                if filters.since and time_column is not None:
+                    statement = statement.where(time_column >= filters.since)
+                if filters.until and time_column is not None:
+                    statement = statement.where(time_column <= filters.until)
                 if filters.release:
                     release_ref = (
                         filters.release
@@ -271,6 +278,18 @@ class SqliteAnalysisStore:
         facts: list[ContributionCommit] = []
         scope = filters.scope.replace("\\", "/").strip("/") if filters.scope else None
         for row in rows:
+            event_at = _event_time(
+                row,
+                filters.time_basis,
+                integration_times or {},
+                release_times or {},
+            )
+            if event_at is None:
+                continue
+            if filters.since and event_at < filters.since:
+                continue
+            if filters.until and event_at > filters.until:
+                continue
             changes = changes_by_commit.get(str(row["hash"]), ())
             paths = tuple(path for path, _binary, _excluded, _insertions, _deletions in changes)
             if scope and not any(path == scope or path.startswith(f"{scope}/") for path in paths):
@@ -312,6 +331,7 @@ class SqliteAnalysisStore:
                         for path, binary, excluded, _insertions, _deletions in changes
                         if not binary and not excluded and not is_generated_path(path)
                     ),
+                    period_at=event_at,
                 )
             )
         return tuple(facts)
@@ -575,6 +595,37 @@ class SqliteAnalysisStore:
         if not result_json:
             raise ReportError(f"Completed analysis run not found: {run_id}")
         return dict(json.loads(str(result_json)))
+
+
+def _event_time(
+    row: dict[str, Any],
+    time_basis: str,
+    integration_times: dict[str, tuple[datetime, datetime | None]],
+    release_times: dict[str, datetime],
+) -> datetime | None:
+    if time_basis == "AUTHORED":
+        return _aware_utc(row["authored_at"])
+    if time_basis == "COMMITTED":
+        return _aware_utc(row["committed_at"])
+    if time_basis == "LANDED":
+        integration_event = integration_times.get(str(row["hash"]))
+        return _aware_utc(integration_event[0]) if integration_event else None
+    if time_basis == "MERGED":
+        integration_event = integration_times.get(str(row["hash"]))
+        return (
+            _aware_utc(integration_event[1])
+            if integration_event and integration_event[1]
+            else None
+        )
+    if time_basis == "RELEASED":
+        release_ref = row["release_ref"]
+        release_event = release_times.get(str(release_ref)) if release_ref else None
+        return _aware_utc(release_event) if release_event else None
+    raise ValueError(f"Unsupported assessment time basis: {time_basis}")
+
+
+def _aware_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 def _json(value: Any) -> str:

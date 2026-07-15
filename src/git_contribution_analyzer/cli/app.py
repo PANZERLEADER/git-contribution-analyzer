@@ -22,6 +22,10 @@ from git_contribution_analyzer.application.use_cases.analyze_contributions impor
 )
 from git_contribution_analyzer.application.use_cases.analyze_project import analyze_project
 from git_contribution_analyzer.application.use_cases.assess_work import assess_work
+from git_contribution_analyzer.application.use_cases.assess_work_series import assess_work_series
+from git_contribution_analyzer.application.use_cases.compare_assessment_runs import (
+    compare_assessment_runs,
+)
 from git_contribution_analyzer.application.use_cases.generate_report import generate_report
 from git_contribution_analyzer.application.use_cases.generate_resume import generate_resume
 from git_contribution_analyzer.application.use_cases.get_run import get_run
@@ -214,9 +218,10 @@ def analyze_command(
     try:
         repository = discover_repository(path)
         config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+        parsed_since, parsed_until = _parse_boundaries(since, until)
         filters = AnalysisFilters(
-            since=_parse_boundary(since, end_of_day=False),
-            until=_parse_boundary(until, end_of_day=True),
+            since=parsed_since,
+            until=parsed_until,
             branch=branch,
             release=release,
             scope=scope,
@@ -297,6 +302,17 @@ def assess_command(
     delivery: Annotated[
         str | None, typer.Option("--delivery", help="Delivery status filter.")
     ] = None,
+    time_basis: Annotated[
+        str,
+        typer.Option(
+            "--time-basis",
+            help="Assessment time: authored, committed, merged, landed, or released.",
+        ),
+    ] = "authored",
+    period: Annotated[
+        str | None,
+        typer.Option("--period", help="Split into calendar week, month, or quarter."),
+    ] = None,
     no_llm: Annotated[
         bool, typer.Option("--no-llm", help="Disable optional explanations.")
     ] = False,
@@ -319,6 +335,14 @@ def assess_command(
         raise typer.BadParameter(
             "Unsupported --rank-by dimension: " + ", ".join(sorted(unsupported_dimensions))
         )
+    normalized_time_basis = time_basis.upper()
+    if normalized_time_basis not in {"AUTHORED", "COMMITTED", "MERGED", "LANDED", "RELEASED"}:
+        raise typer.BadParameter("Unsupported --time-basis")
+    normalized_period = period.casefold() if period else None
+    if normalized_period not in {None, "week", "month", "quarter"}:
+        raise typer.BadParameter("Unsupported --period")
+    if normalized_period is not None and (since is None or until is None):
+        raise typer.BadParameter("--period requires both --since and --until")
     try:
         repository = discover_repository(path)
         config = load_config(WorkspaceLayout.for_repository(repository.root).config)
@@ -328,29 +352,51 @@ def assess_command(
         provider = (
             build_provider(config.llm) if config.llm.enabled and not no_llm else None
         )
-        report = assess_work(
-            path,
-            person_selectors=person_selectors,
-            all_people=all_people,
-            exclude_selectors=exclude_selectors,
-            rank_by=ranking_dimensions,
-            ranking_config=active_ranking_config,
-            filters=AnalysisFilters(
-                since=_parse_boundary(since, end_of_day=False),
-                until=_parse_boundary(until, end_of_day=True),
-                branch=branch,
-                release=release,
-                scope=scope,
-                delivery=delivery,
-            ),
-            llm_provider=provider,
-            allow_llm_fallback=config.llm.allow_fallback_to_rules,
+        parsed_since, parsed_until = _parse_boundaries(since, until)
+        filters = AnalysisFilters(
+            since=parsed_since,
+            until=parsed_until,
+            branch=branch,
+            release=release,
+            scope=scope,
+            delivery=delivery,
+            time_basis=normalized_time_basis,
         )
+        if normalized_period is not None:
+            report = assess_work_series(
+                path,
+                period=normalized_period,
+                person_selectors=person_selectors,
+                all_people=all_people,
+                exclude_selectors=exclude_selectors,
+                rank_by=ranking_dimensions,
+                ranking_config=active_ranking_config,
+                filters=filters,
+                llm_provider=provider,
+                allow_llm_fallback=config.llm.allow_fallback_to_rules,
+            )
+        else:
+            report = assess_work(
+                path,
+                person_selectors=person_selectors,
+                all_people=all_people,
+                exclude_selectors=exclude_selectors,
+                rank_by=ranking_dimensions,
+                ranking_config=active_ranking_config,
+                filters=filters,
+                llm_provider=provider,
+                allow_llm_fallback=config.llm.allow_fallback_to_rules,
+            )
     except Exception as exc:
         _exit_for_error(exc)
         return
     if json_output:
         emit_json(CommandEnvelope(command="assess", data=report, warnings=report["warnings"]))
+        return
+    if report["reportType"] == "WORK_ASSESSMENT_SERIES":
+        emit_human(
+            f"Assessment series {report['run']['id']}: {len(report['periods'])} periods"
+        )
         return
     workload = report["workloadSummary"]
     emit_human(
@@ -394,12 +440,13 @@ def resume_command(
         outcomes = (
             load_verified_outcomes(verified_outcomes) if verified_outcomes is not None else ()
         )
+        parsed_since, parsed_until = _parse_boundaries(since, until)
         report = generate_resume(
             path,
             person_selector=person,
             filters=AnalysisFilters(
-                since=_parse_boundary(since, end_of_day=False),
-                until=_parse_boundary(until, end_of_day=True),
+                since=parsed_since,
+                until=parsed_until,
                 branch=branch,
                 release=release,
                 scope=scope,
@@ -436,7 +483,17 @@ def _parse_boundary(value: str | None, *, end_of_day: bool) -> datetime | None:
         if "T" not in value and end_of_day:
             parsed = datetime.combine(parsed.date(), time.max)
         parsed = parsed.replace(tzinfo=UTC)
-    return parsed
+    return parsed.astimezone(UTC)
+
+
+def _parse_boundaries(
+    since: str | None, until: str | None
+) -> tuple[datetime | None, datetime | None]:
+    parsed_since = _parse_boundary(since, end_of_day=False)
+    parsed_until = _parse_boundary(until, end_of_day=True)
+    if parsed_since is not None and parsed_until is not None and parsed_since > parsed_until:
+        raise typer.BadParameter("--since must be earlier than or equal to --until")
+    return parsed_since, parsed_until
 
 
 @identities_app.command("list")
@@ -612,6 +669,29 @@ def runs_list_command(
         )
 
 
+@runs_app.command("compare")
+def runs_compare_command(
+    base_run_id: Annotated[str, typer.Argument(help="Baseline work assessment run ID.")],
+    target_run_id: Annotated[str, typer.Argument(help="Target work assessment run ID.")],
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Compare two persisted work assessment runs."""
+    try:
+        data = compare_assessment_runs(path, base_run_id, target_run_id)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="runs.compare", data=data, warnings=data["warnings"]))
+        return
+    changes = data["changes"]
+    emit_human(
+        f"Assessment comparison {base_run_id} -> {target_run_id}: "
+        f"completed items {changes['completedItems']['absolute']:+d}"
+    )
+
+
 @runs_app.command("show")
 def runs_show_command(
     run_id: Annotated[str, typer.Argument(help="Analysis run ID or 'latest'.")],
@@ -635,6 +715,8 @@ def runs_show_command(
         emit_human(f"Commits: {data['summary']['commits']}")
     elif report_type == "WORK_ASSESSMENT":
         emit_human(f"Completed items: {data['workloadSummary']['completedItems']}")
+    elif report_type == "WORK_ASSESSMENT_SERIES":
+        emit_human(f"Assessment periods: {len(data['periods'])}")
     elif report_type == "RESUME":
         emit_human(f"Resume candidates: {len(data['experienceBullets'])}")
 

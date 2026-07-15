@@ -38,7 +38,7 @@ inactive source Person 并记录其 target redirect，历史 run JSON 保持不�
 
 | 表 | 用途 |
 |---|---|
-| `analysis_runs` | 带版本的 `ANALYSIS`、`WORK_ASSESSMENT` 或 `RESUME` run 和结果 JSON |
+| `analysis_runs` | 带版本的 `ANALYSIS`、`WORK_ASSESSMENT`、`WORK_ASSESSMENT_SERIES` 或 `RESUME` run 和结果 JSON |
 | `contribution_items` | 分析 run 中稳定分组的工作事项 |
 | `evidence` | claim 引用的 commit/path/metric 证据 |
 | `capability_assessments` | 有 Evidence 支持的技术能力信号 |

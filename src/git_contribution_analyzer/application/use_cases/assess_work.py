@@ -7,11 +7,13 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from git_contribution_analyzer.adapters.git.native_git import NativeGitHistory
 from git_contribution_analyzer.adapters.git.repository_discovery import discover_repository
 from git_contribution_analyzer.adapters.llm.cache import CachedAuditedProvider
 from git_contribution_analyzer.adapters.storage.sqlite.analysis import SqliteAnalysisStore
 from git_contribution_analyzer.adapters.storage.sqlite.database import initialize_database
 from git_contribution_analyzer.adapters.storage.sqlite.llm_audit import SqliteLlmAuditStore
+from git_contribution_analyzer.adapters.workspace.config import load_config
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
 from git_contribution_analyzer.adapters.workspace.locks import workspace_lock
 from git_contribution_analyzer.application.ports.llm import LlmProvider
@@ -47,6 +49,7 @@ from git_contribution_analyzer.domain.services.workload_rules import (
 
 Clock = Callable[[], datetime]
 IdGenerator = Callable[[], str]
+SUPPORTED_TIME_BASES = ("AUTHORED", "COMMITTED", "MERGED", "LANDED", "RELEASED")
 
 
 def assess_work(
@@ -62,18 +65,39 @@ def assess_work(
     id_generator: IdGenerator | None = None,
     llm_provider: LlmProvider | None = None,
     allow_llm_fallback: bool = True,
+    workload_baseline: WorkloadBaseline | None = None,
+    integration_times: dict[str, tuple[datetime, datetime | None]] | None = None,
+    release_times: dict[str, datetime] | None = None,
 ) -> dict[str, Any]:
     repository = discover_repository(path)
     layout = WorkspaceLayout.for_repository(repository.root)
     initialize_database(layout.database)
     store = SqliteAnalysisStore(layout.database, str(repository.root))
     active_filters = filters or AnalysisFilters()
+    if active_filters.time_basis not in SUPPORTED_TIME_BASES:
+        raise ValueError(f"Unsupported assessment time basis: {active_filters.time_basis}")
     now = clock or (lambda: datetime.now(UTC))
     next_id = id_generator or (lambda: str(uuid4()))
     run_id = next_id()
     started_at = now()
     baseline = store.baseline_commit()
     allowed_hashes = _branch_hashes(repository.root, active_filters.branch)
+    history = NativeGitHistory(repository.root)
+    config = load_config(layout.config)
+    active_integration_times = (
+        integration_times
+        if integration_times is not None
+        else (
+            history.integration_times(f"refs/heads/{config.default_branch}")
+            if active_filters.time_basis in {"MERGED", "LANDED"}
+            else {}
+        )
+    )
+    active_release_times = (
+        release_times
+        if release_times is not None
+        else (history.release_times() if active_filters.time_basis == "RELEASED" else {})
+    )
 
     with workspace_lock(layout.locks / "workspace.lock"):
         people, selection = select_people(
@@ -87,6 +111,8 @@ def assess_work(
             active_filters,
             allowed_hashes,
             people=people,
+            integration_times=active_integration_times,
+            release_times=active_release_times,
         )
         scope_type = "PROJECT" if all_people or len(subjects) > 1 else "PERSON"
         snapshot = build_evidence_snapshot(
@@ -126,6 +152,7 @@ def assess_work(
                 selection=selection,
                 rank_by=rank_by,
                 ranking_config=ranking_config,
+                workload_baseline=workload_baseline,
             )
             status = "COMPLETED"
             provider_id = "none"
@@ -186,11 +213,19 @@ def _load_subjects(
     allowed_hashes: set[str] | None,
     *,
     people: tuple[dict[str, Any], ...],
+    integration_times: dict[str, tuple[datetime, datetime | None]],
+    release_times: dict[str, datetime],
 ) -> tuple[tuple[SnapshotSubject, ...], tuple[str, ...]]:
     subjects: list[SnapshotSubject] = []
     warnings: list[str] = []
     for person in people:
-        commits = store.load_commits(str(person["id"]), filters, allowed_hashes=allowed_hashes)
+        commits = store.load_commits(
+            str(person["id"]),
+            filters,
+            allowed_hashes=allowed_hashes,
+            integration_times=integration_times,
+            release_times=release_times,
+        )
         subjects.append(build_snapshot_subject(person, commits))
         if not bool(person["confirmed"]):
             warnings.append(f"Unconfirmed identity: {person['name']} ({person['id']}).")
@@ -205,6 +240,7 @@ def _build_assessment_report(
     selection: PersonSelection,
     rank_by: tuple[str, ...],
     ranking_config: RankingConfig | None,
+    workload_baseline: WorkloadBaseline | None = None,
 ) -> dict[str, Any]:
     completed_items = tuple(
         item
@@ -212,9 +248,9 @@ def _build_assessment_report(
         for item in subject.contribution_items
         if classify_completion(item) is CompletionBucket.COMPLETED
     )
-    workload_baseline = build_workload_baseline(completed_items)
+    active_workload_baseline = workload_baseline or build_workload_baseline(completed_items)
     serialized_subjects = [
-        _serialize_subject(subject, workload_baseline) for subject in snapshot.subjects
+        _serialize_subject(subject, active_workload_baseline) for subject in snapshot.subjects
     ]
     assessments = [
         assessment
@@ -325,6 +361,61 @@ def _build_assessment_report(
             "Git evidence does not prove business outcomes, sole ownership, or working hours.",
         ],
     }
+
+
+def build_assessment_workload_baseline(
+    path: Path,
+    *,
+    person_selectors: tuple[str, ...] = (),
+    all_people: bool = False,
+    exclude_selectors: tuple[str, ...] = (),
+    filters: AnalysisFilters,
+    integration_times: dict[str, tuple[datetime, datetime | None]] | None = None,
+    release_times: dict[str, datetime] | None = None,
+) -> WorkloadBaseline:
+    repository = discover_repository(path)
+    layout = WorkspaceLayout.for_repository(repository.root)
+    initialize_database(layout.database)
+    store = SqliteAnalysisStore(layout.database, str(repository.root))
+    if filters.time_basis not in SUPPORTED_TIME_BASES:
+        raise ValueError(f"Unsupported assessment time basis: {filters.time_basis}")
+    history = NativeGitHistory(repository.root)
+    config = load_config(layout.config)
+    active_integration_times = (
+        integration_times
+        if integration_times is not None
+        else (
+            history.integration_times(f"refs/heads/{config.default_branch}")
+            if filters.time_basis in {"MERGED", "LANDED"}
+            else {}
+        )
+    )
+    active_release_times = (
+        release_times
+        if release_times is not None
+        else (history.release_times() if filters.time_basis == "RELEASED" else {})
+    )
+    people, _selection = select_people(
+        store,
+        person_selectors=person_selectors,
+        all_people=all_people,
+        exclude_selectors=exclude_selectors,
+    )
+    subjects, _warnings = _load_subjects(
+        store,
+        filters,
+        _branch_hashes(repository.root, filters.branch),
+        people=people,
+        integration_times=active_integration_times,
+        release_times=active_release_times,
+    )
+    completed_items = tuple(
+        item
+        for subject in subjects
+        for item in subject.contribution_items
+        if classify_completion(item) is CompletionBucket.COMPLETED
+    )
+    return build_workload_baseline(completed_items)
 
 
 def _serialize_subject(

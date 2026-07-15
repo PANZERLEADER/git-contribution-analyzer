@@ -44,12 +44,20 @@ class GitRepoBuilder:
         *,
         name: str = "Test User",
         email: str = "test@example.com",
+        authored_at: datetime | None = None,
+        committed_at: datetime | None = None,
     ) -> str:
         target = self.root / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         self.run("add", path)
-        return self._commit(message, name=name, email=email)
+        return self._commit(
+            message,
+            name=name,
+            email=email,
+            authored_at=authored_at,
+            committed_at=committed_at,
+        )
 
     def commit_binary(self, path: str, content: bytes, message: str) -> str:
         target = self.root / path
@@ -69,18 +77,21 @@ class GitRepoBuilder:
         *,
         name: str = "Test User",
         email: str = "test@example.com",
+        authored_at: datetime | None = None,
+        committed_at: datetime | None = None,
     ) -> str:
-        date = self._next_date.isoformat()
+        author_date = (authored_at or self._next_date).isoformat()
+        committer_date = (committed_at or authored_at or self._next_date).isoformat()
         self._next_date += timedelta(minutes=1)
         env = os.environ.copy()
         env.update(
             {
                 "GIT_AUTHOR_NAME": name,
                 "GIT_AUTHOR_EMAIL": email,
-                "GIT_AUTHOR_DATE": date,
+                "GIT_AUTHOR_DATE": author_date,
                 "GIT_COMMITTER_NAME": name,
                 "GIT_COMMITTER_EMAIL": email,
-                "GIT_COMMITTER_DATE": date,
+                "GIT_COMMITTER_DATE": committer_date,
             }
         )
         self.run("commit", "-m", message, env=env)
@@ -90,15 +101,27 @@ class GitRepoBuilder:
         arguments = ("checkout", "-b", branch) if create else ("checkout", branch)
         self.run(*arguments)
 
-    def tag(self, name: str) -> None:
-        self.run("tag", name)
+    def tag(self, name: str, *, created_at: datetime | None = None) -> None:
+        if created_at is None:
+            self.run("tag", name)
+            return
+        env = os.environ.copy()
+        env["GIT_COMMITTER_DATE"] = created_at.isoformat()
+        self.run("tag", "-a", name, "-m", name, env=env)
 
     def cherry_pick(self, commit_hash: str) -> str:
         self.run("cherry-pick", commit_hash)
         return self.run("rev-parse", "HEAD")
 
-    def merge(self, branch: str, message: str) -> str:
-        self.run("merge", "--no-ff", branch, "-m", message)
+    def merge(
+        self, branch: str, message: str, *, committed_at: datetime | None = None
+    ) -> str:
+        env = None
+        if committed_at is not None:
+            env = os.environ.copy()
+            env["GIT_AUTHOR_DATE"] = committed_at.isoformat()
+            env["GIT_COMMITTER_DATE"] = committed_at.isoformat()
+        self.run("merge", "--no-ff", branch, "-m", message, env=env)
         return self.run("rev-parse", "HEAD")
 
     def revert(self, commit_hash: str) -> str:

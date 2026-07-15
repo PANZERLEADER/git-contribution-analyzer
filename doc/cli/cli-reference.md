@@ -52,6 +52,8 @@ gca assess <repo> --person alice@example.com --person bob@example.com --no-llm -
 gca assess <repo> --all --exclude-person ci@example.com --no-llm --json
 gca assess <repo> --all --rank-by workload --rank-by difficulty --no-llm --json
 gca assess <repo> --all --ranking-config team-ranking.yml --no-llm --json
+gca assess <repo> --all --since 2025-01-01 --until 2026-12-31 `
+  --period quarter --time-basis released --no-llm --json
 gca report <repo> --run latest --format csv --output team.csv
 ```
 
@@ -60,6 +62,12 @@ versioned distributions, not an employee score or ranking. `--person` and `--exc
 repeatable. `--exclude-person` is valid only with `--all`; all-person selection includes active,
 confirmed `HUMAN` identities by default and records other identities as exclusions. CSV omits
 email unless `--include-email` is explicitly supplied.
+
+`--time-basis` accepts `authored`, `committed`, `merged`, `landed`, and `released`.
+`--period` accepts `week`, `month`, or `quarter` and requires ordered `--since` and `--until`
+boundaries. Each calendar period is persisted as a work assessment run, together with a series run
+containing period-over-period and available year-over-year changes. Weeks start on Monday; partial
+boundary periods are marked.
 
 Identity maintenance supports reversible merges:
 
@@ -89,9 +97,13 @@ Options include `--target-role`, `--include-pending` and `--verified-outcomes <y
 ```powershell
 gca runs list <repo> --json
 gca runs show <run-id> <repo> --json
+gca runs compare <base-run-id> <target-run-id> <repo> --json
 gca report <repo> --run <run-id> --format markdown --output report.md
 gca report <repo> --run <run-id> --format json --output report.json
 ```
+
+`runs compare` accepts two persisted `WORK_ASSESSMENT` runs and reports overall, distribution, and
+per-person deltas. It warns when rule versions, time bases, or cohorts differ.
 
 `report` replays persisted results and selects a renderer from the run type.
 

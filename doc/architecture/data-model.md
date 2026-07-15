@@ -39,7 +39,7 @@ historical run JSON remains immutable.
 
 | Table | Purpose |
 |---|---|
-| `analysis_runs` | Versioned `ANALYSIS`, `WORK_ASSESSMENT` or `RESUME` run and result JSON |
+| `analysis_runs` | Versioned `ANALYSIS`, `WORK_ASSESSMENT`, `WORK_ASSESSMENT_SERIES` or `RESUME` run and result JSON |
 | `contribution_items` | Stable grouped work items for analysis runs |
 | `evidence` | Commit/path/metric references used by claims |
 | `capability_assessments` | Evidence-backed technical capability signals |

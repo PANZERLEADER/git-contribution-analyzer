@@ -36,6 +36,18 @@ Evidence、置信度和 gaps。结构分析器缺失时应降低置信度，不�
 四位小数和 dense ranking。可选 YAML 配置使用 cohort-max 归一化，权重和必须精确为 `1.0`。
 不同 cohort 或不同配置下的分数不可直接横向比较。
 
+## 时间口径与周期
+
+- `AUTHORED`：作者提交时间；`COMMITTED`：committer 写入提交对象的时间。
+- `LANDED`：提交首次由目标分支 first-parent 集成点包含的时间。
+- `MERGED`：提交由目标分支 merge commit 引入的时间；直接提交不属于该口径。
+- `RELEASED`：首次关联发布 tag 的 creatordate；annotated tag 使用 tagger date，轻量 tag 使用
+  目标 commit 时间。
+
+周从周一开始，月和季度使用自然日历。首尾不完整周期必须标记 partial。环比使用前一个输出周期；
+同比只在同一序列包含上年相同周/月/季度时计算。比较前必须保持仓库、人员 cohort、过滤条件和规则
+版本一致。Git 时间戳统一规范化为 UTC；升级已有工作区后应执行一次 `gca index`。
+
 ## 简历 Claim
 
 - `CONTRIBUTED`：存在贡献证据，但责任边界不完整。

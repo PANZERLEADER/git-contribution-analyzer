@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 import subprocess
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from git_contribution_analyzer.adapters.git.pydriller_history import PyDrillerChangeReader
@@ -96,7 +96,11 @@ class NativeGitHistory:
         if not wanted:
             return {}
         release_tags: dict[str, str] = {}
-        tags = sorted(git_ref.name for git_ref in self.list_refs() if git_ref.ref_type == "TAG")
+        release_times = self.release_times()
+        tags = sorted(
+            (git_ref.name for git_ref in self.list_refs() if git_ref.ref_type == "TAG"),
+            key=lambda tag: (release_times.get(tag, datetime.max.replace(tzinfo=UTC)), tag),
+        )
         for tag in tags:
             for commit_hash in self._rev_list(tag):
                 if commit_hash in wanted:
@@ -104,6 +108,56 @@ class NativeGitHistory:
             if len(release_tags) == len(wanted):
                 break
         return release_tags
+
+    def release_times(self) -> dict[str, datetime]:
+        raw = self._run(
+            "for-each-ref",
+            "--format=%(refname)%00%(creatordate:iso-strict)%1e",
+            "refs/tags",
+        ).stdout
+        result: dict[str, datetime] = {}
+        for record in raw.split(b"\x1e"):
+            decoded = record.strip(b"\r\n").decode("utf-8", errors="replace")
+            if not decoded:
+                continue
+            ref_name, created_at = decoded.split("\x00", maxsplit=1)
+            if created_at:
+                result[ref_name] = datetime.fromisoformat(created_at)
+        return result
+
+    def integration_times(
+        self, ref_name: str
+    ) -> dict[str, tuple[datetime, datetime | None]]:
+        graph = self._parent_graph("--all")
+        mainline = self._parent_graph("--first-parent", "--reverse", ref_name)
+        if not mainline:
+            return {}
+        metadata = self._read_metadata(tuple(mainline))
+        assigned: set[str] = set()
+        result: dict[str, tuple[datetime, datetime | None]] = {}
+        for anchor, anchor_parents in mainline.items():
+            committed_at = datetime.fromisoformat(metadata[anchor][7])
+            merged_at = committed_at if len(anchor_parents) > 1 else None
+            stack = [anchor]
+            while stack:
+                commit_hash = stack.pop()
+                if commit_hash in assigned:
+                    continue
+                assigned.add(commit_hash)
+                result[commit_hash] = (committed_at, merged_at)
+                stack.extend(graph.get(commit_hash, ()))
+        return result
+
+    def _parent_graph(self, *arguments: str) -> dict[str, tuple[str, ...]]:
+        raw = self._run("rev-list", "--parents", *arguments, check=False)
+        if raw.returncode not in (0, 128):
+            raise WorkspaceError("Unable to enumerate Git parent graph")
+        graph: dict[str, tuple[str, ...]] = {}
+        for line in raw.stdout.decode("ascii", errors="replace").splitlines():
+            fields = line.split()
+            if fields:
+                graph[fields[0]] = tuple(fields[1:])
+        return graph
 
     def _rev_list(self, ref_name: str) -> tuple[str, ...]:
         result = self._run("rev-list", ref_name, check=False)

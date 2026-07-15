@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add calendar week/month/quarter assessment series with persisted child runs, workload and
+  difficulty trends, period-over-period changes, and year-over-year changes when the matching
+  prior-year period is present.
+- Add authored, committed, merged, landed, and released assessment time bases derived from Git
+  timestamps, first-parent integration points, and release tag creation times.
+- Add `gca runs compare` for deterministic comparison of two historical work assessment runs.
+- Reject reversed `--since`/`--until` boundaries and normalize indexed Git timestamps and CLI
+  boundaries to UTC. Existing workspaces should run `gca index` once after upgrading.
+
 ## 0.2.0 - 2026-07-15
 
 - Add repeatable person selection, all-scope exclusions, reversible identity

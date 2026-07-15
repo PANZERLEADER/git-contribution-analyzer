@@ -62,6 +62,14 @@ gca assess D:\path\to\repository --all `
   --exclude-person ci@example.com `
   --no-llm --json
 
+# Build calendar month trends; week and quarter are also supported.
+gca assess D:\path\to\repository --all `
+  --since 2025-01-01 --until 2026-12-31 `
+  --period month --time-basis landed --no-llm --json
+
+# Compare two historical work assessment runs.
+gca runs compare <base-run-id> <target-run-id> D:\path\to\repository --json
+
 # Generate evidence-backed resume candidates for one confirmed person.
 gca resume D:\path\to\repository `
   --person alice@example.com `
@@ -192,6 +200,13 @@ bands separately from `ROUTINE`, `STANDARD`, `COMPLEX`, and `HIGH_RISK` engineer
 Merge diffs, matching patch IDs, generated/vendor/build output, lockfiles, and binary line counts
 do not create duplicate workload. Difficulty is based on versioned data, distributed-system,
 compatibility, impact, critical-domain, and delivery signals; raw line count cannot raise it.
+
+`--time-basis` accepts `authored`, `committed`, `merged`, `landed`, and `released`. Landed time is
+the target branch first-parent integration point, merged time includes only work introduced by a
+merge commit, and released time is the tag creation time. `--period week|month|quarter` requires
+both boundaries and emits persisted trends, period-over-period deltas, and year-over-year deltas
+when the matching prior-year period is in range. Weeks start on Monday and partial boundary periods
+are marked. Run `gca index` once after upgrading so old timestamps are rebuilt in UTC.
 
 Assessment reports include technical and business summaries, Evidence IDs, rule versions,
 confidence, and gaps. Repeatable `--rank-by` enables dense dimension rankings. An explicit

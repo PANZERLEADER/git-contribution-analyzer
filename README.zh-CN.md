@@ -73,6 +73,14 @@ gca assess D:\path\to\repository --all `
   --exclude-person ci@example.com `
   --no-llm --json
 
+# 按自然月生成周期趋势；也可使用 week 或 quarter。
+gca assess D:\path\to\repository --all `
+  --since 2025-01-01 --until 2026-12-31 `
+  --period month --time-basis landed --no-llm --json
+
+# 对比两个历史工作评估 run。
+gca runs compare <base-run-id> <target-run-id> D:\path\to\repository --json
+
 # 为一个已确认人员生成有 Evidence 引用的简历候选内容。
 gca resume D:\path\to\repository `
   --person alice@example.com `
@@ -179,6 +187,12 @@ Merge diff、重复 patch、生成目录、vendor/build 输出、lockfile 和二
 delivery 的 dense ranking；只有提供 `--ranking-config` YAML 时才生成 cohort-max 归一化权重总分。
 这些值用于结构化复盘，不代表员工价值、工时、绩效等级、薪酬或晋升建议。持久化 v2 run 可通过
 `gca report --format csv` 导出，默认不包含邮箱，只有 `--include-email` 会显式加入。
+
+`--time-basis` 支持 `authored`、`committed`、`merged`、`landed`、`released`。其中
+`landed` 使用目标分支 first-parent 集成点，`merged` 只统计 merge commit 引入的工作，
+`released` 使用 tag creatordate。`--period week|month|quarter` 要求同时提供 `--since` 和
+`--until`，生成持久化周期序列、环比，以及范围内存在上年对应周期时的同比。自然周从周一开始；
+不完整首尾周期会明确标记。升级到此版本后应执行一次 `gca index`，将旧索引时间统一重建为 UTC。
 
 ## 简历生成
 

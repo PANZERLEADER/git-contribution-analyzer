@@ -154,6 +154,7 @@ def _serialize_subject(subject: SnapshotSubject) -> dict[str, Any]:
                 "hash": commit.hash,
                 "subject": commit.subject,
                 "authoredAt": commit.authored_at.isoformat(),
+                "periodAt": commit.period_at.isoformat() if commit.period_at else None,
                 "commitType": commit.commit_type,
                 "deliveryStatus": commit.delivery_status,
                 "paths": sorted(commit.paths),

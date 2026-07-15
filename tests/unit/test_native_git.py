@@ -76,7 +76,7 @@ def test_should_resolve_reachability_and_release_tags_in_bulk(
 
     assert reachable == frozenset((first, second))
     assert release_tags == {
-        first: "refs/tags/v1.0.0",
+        first: "refs/tags/v2.0.0",
         second: "refs/tags/v1.0.0",
     }
     assert not any(command[:2] == ("merge-base", "--is-ancestor") for command in commands)

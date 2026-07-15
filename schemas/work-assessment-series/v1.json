@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/work-assessment-series/v1.json",
+  "type": "object",
+  "required": ["schemaVersion", "reportType", "run", "period", "timeBasis", "range", "periods", "warnings", "limitations"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "reportType": { "const": "WORK_ASSESSMENT_SERIES" },
+    "run": {
+      "type": "object",
+      "required": ["id", "runType", "status", "startedAt", "completedAt", "ruleVersion"],
+      "properties": {
+        "id": { "type": "string" },
+        "runType": { "const": "WORK_ASSESSMENT_SERIES" },
+        "status": { "const": "COMPLETED" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "ruleVersion": { "const": "work-assessment-series-v1" }
+      },
+      "additionalProperties": false
+    },
+    "period": { "enum": ["week", "month", "quarter"] },
+    "timeBasis": { "enum": ["AUTHORED", "COMMITTED", "MERGED", "LANDED", "RELEASED"] },
+    "range": {
+      "type": "object",
+      "required": ["since", "until"],
+      "properties": {
+        "since": { "type": "string", "format": "date-time" },
+        "until": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "periods": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "since", "until", "partial", "runId", "status", "metrics", "comparison"],
+        "properties": {
+          "label": { "type": "string" },
+          "since": { "type": "string", "format": "date-time" },
+          "until": { "type": "string", "format": "date-time" },
+          "partial": { "type": "boolean" },
+          "runId": { "type": "string" },
+          "status": { "enum": ["COMPLETED", "PARTIAL"] },
+          "metrics": { "$ref": "#/$defs/metrics" },
+          "comparison": {
+            "type": "object",
+            "required": ["periodOverPeriod", "yearOverYear"],
+            "properties": {
+              "periodOverPeriod": { "$ref": "#/$defs/changeSetOrNull" },
+              "yearOverYear": { "$ref": "#/$defs/changeSetOrNull" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "metrics": {
+      "type": "object",
+      "required": ["completedItems", "pendingItems", "reworkItems", "integrationItems", "workloadPoints", "difficultyPoints"],
+      "additionalProperties": { "type": "integer" }
+    },
+    "change": {
+      "type": "object",
+      "required": ["absolute", "percent"],
+      "properties": {
+        "absolute": { "type": "integer" },
+        "percent": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "changeSet": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/change" }
+    },
+    "changeSetOrNull": {
+      "oneOf": [{ "$ref": "#/$defs/changeSet" }, { "type": "null" }]
+    }
+  },
+  "additionalProperties": false
+}

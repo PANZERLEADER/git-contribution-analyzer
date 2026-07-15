@@ -6,11 +6,16 @@ from git_contribution_analyzer.adapters.reporting.resume_markdown import render_
 from git_contribution_analyzer.adapters.reporting.work_assessment_markdown import (
     render_work_assessment_markdown,
 )
+from git_contribution_analyzer.adapters.reporting.work_assessment_series_markdown import (
+    render_work_assessment_series_markdown,
+)
 
 
 def render_markdown(report: dict[str, Any]) -> str:
     if report.get("reportType") == "WORK_ASSESSMENT":
         return render_work_assessment_markdown(report)
+    if report.get("reportType") == "WORK_ASSESSMENT_SERIES":
+        return render_work_assessment_series_markdown(report)
     if report.get("reportType") == "RESUME":
         return render_resume_markdown(report)
     if report.get("reportType") == "PROJECT":

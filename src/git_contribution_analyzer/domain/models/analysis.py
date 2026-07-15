@@ -12,9 +12,10 @@ class AnalysisFilters:
     release: str | None = None
     scope: str | None = None
     delivery: str | None = None
+    time_basis: str = "AUTHORED"
 
     def as_dict(self) -> dict[str, str | None]:
-        return {
+        result = {
             "since": self.since.isoformat() if self.since else None,
             "until": self.until.isoformat() if self.until else None,
             "branch": self.branch,
@@ -22,3 +23,6 @@ class AnalysisFilters:
             "scope": self.scope,
             "delivery": self.delivery,
         }
+        if self.time_basis != "AUTHORED":
+            result["timeBasis"] = self.time_basis
+        return result

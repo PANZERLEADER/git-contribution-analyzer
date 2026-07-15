@@ -24,6 +24,7 @@ class ContributionCommit:
     effective_insertions: int | None = None
     effective_deletions: int | None = None
     effective_files_changed: int | None = None
+    period_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
