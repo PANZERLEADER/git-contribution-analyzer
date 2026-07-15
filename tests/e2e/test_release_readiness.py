@@ -37,6 +37,7 @@ def test_should_enforce_cross_platform_build_and_install_gates() -> None:
     assert "python -m build" in workflow
     assert "python -m coverage report" in workflow
     assert "--include=" in workflow
+    assert '--exclude "adapters/gui"' in workflow
     assert "--cov-fail-under=0" in workflow
     assert (
         '--omit="src/git_contribution_analyzer/adapters/gui/*,'
@@ -46,6 +47,7 @@ def test_should_enforce_cross_platform_build_and_install_gates() -> None:
     assert "python scripts/verify_wheel.py" in workflow
     assert "gui:" in workflow
     assert 'python -m pip install -e ".[dev,gui]"' in workflow
+    assert "libegl1" in workflow
     assert "tests/e2e/test_gui_smoke.py" in workflow
     assert "gitleaks" in workflow.casefold()
     assert "git --redact --verbose" in workflow
@@ -81,6 +83,7 @@ def test_should_define_standalone_release_workflow() -> None:
     assert "gca-gui-linux-x86_64" in workflow
     assert "gca-gui-macos-x86_64.app.zip" in workflow
     assert "python scripts/verify_gui_standalone.py" in workflow
+    assert "libegl1" in workflow
 
 
 def test_should_record_current_release_in_changelog() -> None:
