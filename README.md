@@ -195,6 +195,12 @@ are deterministically inferred from conventional commit scopes, issue keys, and 
 clusters. They are labels for work areas, not claims about revenue, customer value, business
 ownership, or individual performance.
 
+Analysis reports also expose versioned structural signals derived from commit-level path sets.
+Pairs require at least two repeated co-change commits; hotspots require at least two change
+commits and are ordered by change concentration plus repeated coupling. Merge commits, generated
+paths, binary-only changes, and duplicate patches are excluded. Structural signals are auditable
+repository observations and do not alter workload, difficulty, ranking, or performance conclusions.
+
 Every Contribution Item and capability claim references an Evidence ID. Reports explicitly
 state that Git evidence does not prove business outcome, sole ownership, or employee value.
 Optional ranking uses published workload, difficulty, and delivery rules; commit and raw line

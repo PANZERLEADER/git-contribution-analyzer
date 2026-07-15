@@ -173,6 +173,7 @@
     },
     "technicalSummary": { "$ref": "#/$defs/technicalSummary" },
     "businessSummary": { "$ref": "#/$defs/businessSummary" },
+    "structuralSignals": { "$ref": "#/$defs/structuralSignals" },
     "evidence": {
       "type": "array",
       "items": {
@@ -255,6 +256,62 @@
         "domains": { "type": "array" },
         "highlights": { "$ref": "#/$defs/deterministicHighlights" },
         "limitations": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
+    },
+    "structuralSignals": {
+      "type": "object",
+      "required": ["ruleVersion", "summary", "couplings", "hotspots", "limitations"],
+      "properties": {
+        "ruleVersion": { "const": "structural-signals-v1" },
+        "summary": {
+          "type": "object",
+          "required": ["analyzedCommits", "analyzedFiles", "coupledPairs", "hotspots"],
+          "properties": {
+            "analyzedCommits": { "type": "integer", "minimum": 0 },
+            "analyzedFiles": { "type": "integer", "minimum": 0 },
+            "coupledPairs": { "type": "integer", "minimum": 0 },
+            "hotspots": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "couplings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "leftPath", "rightPath", "coChangeCommits", "confidence", "commitHashes"
+            ],
+            "properties": {
+              "leftPath": { "type": "string" },
+              "rightPath": { "type": "string" },
+              "coChangeCommits": { "type": "integer", "minimum": 2 },
+              "confidence": { "enum": ["HIGH", "MEDIUM"] },
+              "commitHashes": { "$ref": "#/$defs/nonEmptyStringArray" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "hotspots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path", "changeCommits", "coupledFiles", "coChangeCommits", "score",
+              "commitHashes"
+            ],
+            "properties": {
+              "path": { "type": "string" },
+              "changeCommits": { "type": "integer", "minimum": 2 },
+              "coupledFiles": { "type": "integer", "minimum": 0 },
+              "coChangeCommits": { "type": "integer", "minimum": 0 },
+              "score": { "type": "integer", "minimum": 2 },
+              "commitHashes": { "$ref": "#/$defs/nonEmptyStringArray" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "limitations": { "$ref": "#/$defs/nonEmptyStringArray" }
       },
       "additionalProperties": false
     },

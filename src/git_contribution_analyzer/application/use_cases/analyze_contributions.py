@@ -31,6 +31,9 @@ from git_contribution_analyzer.domain.models.contribution import (
 from git_contribution_analyzer.domain.services.dimensional_summary import (
     build_dimensional_summaries,
 )
+from git_contribution_analyzer.domain.services.structural_signals import (
+    build_structural_signals,
+)
 
 Clock = Callable[[], datetime]
 IdGenerator = Callable[[], str]
@@ -182,6 +185,7 @@ def _build_report(
     technical_summary, business_summary = build_dimensional_summaries(
         commits, items, capabilities
     )
+    structural_signals = build_structural_signals(commits)
     return {
         "schemaVersion": "1.0",
         "reportType": "PERSON",
@@ -229,6 +233,7 @@ def _build_report(
         ],
         "technicalSummary": technical_summary,
         "businessSummary": business_summary,
+        "structuralSignals": structural_signals,
         "evidence": [_serialize_evidence(entry) for entry in evidence],
         "semantic": None,
         "warnings": [],

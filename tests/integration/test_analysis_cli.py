@@ -169,6 +169,9 @@ def test_should_analyze_replay_and_render_reports_without_llm(tmp_path: Path) ->
     assert all(set(item["evidenceIds"]) <= evidence_ids for item in report["contributionItems"])
     assert report["technicalSummary"]["dominantModules"]
     assert report["businessSummary"]["domains"]
+    assert report["structuralSignals"]["ruleVersion"] == "structural-signals-v1"
+    assert report["structuralSignals"]["summary"]["analyzedCommits"] == 3
+    assert report["structuralSignals"]["limitations"]
     dimension_claims = [
         *report["technicalSummary"]["highlights"],
         *report["businessSummary"]["highlights"],
@@ -192,6 +195,7 @@ def test_should_analyze_replay_and_render_reports_without_llm(tmp_path: Path) ->
     assert json.loads(shown.stdout)["data"] == report
     assert json.loads(json_report.stdout) == report
     assert "## Contribution Items" in markdown_report.stdout
+    assert "## Structural Signals" in markdown_report.stdout
     assert "Evidence" in markdown_report.stdout
     assert "does not prove business outcome or sole ownership" in markdown_report.stdout
 
@@ -624,6 +628,8 @@ def test_should_analyze_all_git_people_with_project_dimensions(tmp_path: Path) -
     assert all(entry["technicalSummary"] for entry in report["people"])
     assert all(entry["businessSummary"] for entry in report["people"])
     assert report["technicalSummary"]["dominantModules"]
+    assert report["structuralSignals"]["ruleVersion"] == "structural-signals-v1"
+    assert all(entry["structuralSignals"] for entry in report["people"])
     assert {entry["name"] for entry in report["businessSummary"]["domains"]} == {
         "room",
         "recharge",
@@ -637,6 +643,7 @@ def test_should_analyze_all_git_people_with_project_dimensions(tmp_path: Path) -
     assert markdown.exit_code == 0
     assert "# Project Contribution Report" in markdown.stdout
     assert "## Technical Summary" in markdown.stdout
+    assert "## Structural Signals" in markdown.stdout
     assert "## Business Summary" in markdown.stdout
     assert "## Contributors" in markdown.stdout
 

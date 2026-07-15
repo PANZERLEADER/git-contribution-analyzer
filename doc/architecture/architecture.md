@@ -51,6 +51,11 @@ init/index/sync -> Git index -> identity normalization
 scope and rule versions produce the same snapshot ID. A provider receives a redacted allowlisted
 context derived from the snapshot; it does not read the repository.
 
+Analysis derives `structural-signals-v1` from the snapshot commit facts. The pure domain service
+calculates repeated file co-change edges and structural hotspots without reading Git or SQLite.
+Person and project report JSON persist the signals and their supporting commit hashes, while the
+LLM context, workload, difficulty and ranking inputs remain unchanged.
+
 ## Extension Points
 
 - Add an LLM by implementing `LlmProvider` and registering it in the provider registry.

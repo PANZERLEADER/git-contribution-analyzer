@@ -43,6 +43,7 @@ def _render_person_markdown(report: dict[str, Any]) -> str:
         lines.append(
             f"- {highlight['text']} [Evidence: {', '.join(highlight['evidenceIds'])}]"
         )
+    _append_structural_signals(lines, report.get("structuralSignals"))
     lines.extend(
         [
             "",
@@ -136,6 +137,7 @@ def _render_project_markdown(report: dict[str, Any]) -> str:
                 f"- {capability['capability']}: {capability['people']} people "
                 f"[Evidence: {_format_refs(capability['evidenceRefs'])}]"
             )
+    _append_structural_signals(lines, report.get("structuralSignals"))
     lines.extend(["", "## Business Summary", "", business["headline"], ""])
     for domain in business["domains"][:30]:
         lines.append(
@@ -183,3 +185,33 @@ def _format_refs(values: list[str], limit: int = 5) -> str:
     remaining = len(values) - len(visible)
     suffix = f", ... (+{remaining} more)" if remaining else ""
     return f"{', '.join(visible)}{suffix}"
+
+
+def _append_structural_signals(
+    lines: list[str], structural: dict[str, Any] | None
+) -> None:
+    if structural is None:
+        return
+    summary = structural["summary"]
+    lines.extend(
+        [
+            "",
+            "## Structural Signals",
+            "",
+            f"- Analyzed commits / files: "
+            f"{summary['analyzedCommits']} / {summary['analyzedFiles']}",
+            f"- Repeated coupled pairs: {summary['coupledPairs']}",
+            f"- Structural hotspots: {summary['hotspots']}",
+        ]
+    )
+    for coupling in structural["couplings"][:10]:
+        lines.append(
+            f"- Coupling `{coupling['leftPath']}` <-> `{coupling['rightPath']}`: "
+            f"{coupling['coChangeCommits']} commits ({coupling['confidence']})"
+        )
+    for hotspot in structural["hotspots"][:10]:
+        lines.append(
+            f"- Hotspot `{hotspot['path']}`: score {hotspot['score']}, "
+            f"{hotspot['changeCommits']} change commits, "
+            f"{hotspot['coupledFiles']} coupled files"
+        )

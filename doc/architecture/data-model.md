@@ -49,6 +49,11 @@ historical run JSON remains immutable.
 Work assessment and resume results are persisted in `analysis_runs.result_json`. They remain
 replayable even if later rule versions change.
 
+New person and project analysis reports may include the backward-compatible `structuralSignals`
+field. It records its rule version, analyzed scope counts, repeated co-change pairs, hotspots,
+supporting commit hashes and interpretation limits. Older persisted v1 reports remain valid when
+the field is absent.
+
 ## Migrations
 
 - `0001_initial`: repository and initial run state.

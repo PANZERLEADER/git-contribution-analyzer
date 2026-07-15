@@ -21,6 +21,10 @@ from git_contribution_analyzer.application.use_cases.analyze_contributions impor
     _build_report,
 )
 from git_contribution_analyzer.domain.models.analysis import AnalysisFilters
+from git_contribution_analyzer.domain.models.contribution import ContributionCommit
+from git_contribution_analyzer.domain.services.structural_signals import (
+    build_structural_signals,
+)
 
 Clock = Callable[[], datetime]
 IdGenerator = Callable[[], str]
@@ -55,6 +59,7 @@ def analyze_project(
         )
         try:
             people_reports: list[dict[str, Any]] = []
+            project_commits: list[ContributionCommit] = []
             identity_warnings: list[str] = []
             subjects = []
             for person_record in store.list_people_for_analysis():
@@ -63,6 +68,7 @@ def analyze_project(
                 )
                 if not commits:
                     continue
+                project_commits.extend(commits)
                 person = {
                     key: person_record[key]
                     for key in ("id", "name", "email", "kind", "confirmed")
@@ -115,6 +121,7 @@ def analyze_project(
                 repository_root=str(repository.root),
                 filters=active_filters,
                 people_reports=people_reports,
+                commits=tuple(project_commits),
                 identity_warnings=identity_warnings,
             )
             store.complete_run(
@@ -138,6 +145,7 @@ def _build_project_report(
     repository_root: str,
     filters: AnalysisFilters,
     people_reports: list[dict[str, Any]],
+    commits: tuple[ContributionCommit, ...],
     identity_warnings: list[str],
 ) -> dict[str, Any]:
     commit_types: Counter[str] = Counter()
@@ -276,6 +284,7 @@ def _build_project_report(
         "deliveryStatuses": dict(sorted(deliveries.items())),
         "technicalSummary": technical,
         "businessSummary": business,
+        "structuralSignals": build_structural_signals(commits),
         "people": people_reports,
         "identityWarnings": identity_warnings,
         "warnings": [],

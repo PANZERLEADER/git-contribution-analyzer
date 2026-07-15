@@ -49,6 +49,12 @@ init/index/sync -> Git index -> 身份规范化
 应生成相同 Snapshot ID。Provider 只接收由 Snapshot 派生的、经过脱敏和白名单约束的上下文，
 不会直接读取仓库。
 
+## 结构信号
+
+分析流程通过纯 Domain 服务从 Snapshot 提交事实中推导 `structural-signals-v1`。该服务计算重复文件
+共同变更边和结构热点，不直接读取 Git 或 SQLite。个人和项目报告会持久化信号及其支持提交哈希，
+但 LLM 上下文、工作量、难度和排名输入保持不变。
+
 ## 扩展点
 
 - 实现 `LlmProvider` 并注册到 Provider registry，可增加新的 LLM 接入。

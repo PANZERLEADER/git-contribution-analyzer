@@ -23,6 +23,20 @@ noise are excluded from effective workload where the versioned rule declares the
 `SMALL`, `MEDIUM`, `LARGE` and `XLARGE` describe effective files, effective churn and module span
 relative to a repository baseline. Size is not duration or difficulty.
 
+## Structural Signals
+
+`structural-signals-v1` derives repeated file co-change and structural hotspots from the filtered
+commit set. A coupled pair requires at least two non-merge commits that change both eligible paths.
+Confidence is `MEDIUM` for two commits and `HIGH` for three or more. A hotspot requires at least
+two change commits; its observation score is `changeCommits + coChangeCommits`, where the second
+term sums only repeated coupled edges. Results are ordered deterministically and retain up to 50
+supporting commit hashes per entry.
+
+Generated paths, binary-only commits, duplicate patch IDs and merge commits are excluded. Co-change
+does not prove a runtime dependency. A hotspot does not prove poor quality, high difficulty,
+ownership, employee value or individual performance. Structural signals are reported separately
+and do not change assessment scores in this rule version.
+
 ## Difficulty
 
 `ROUTINE`, `STANDARD`, `COMPLEX` and `HIGH_RISK` are deterministic rule results. Signals cover
