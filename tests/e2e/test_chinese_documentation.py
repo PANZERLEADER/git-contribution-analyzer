@@ -30,7 +30,10 @@ BILINGUAL_DOCUMENT_PAIRS = {
     "doc/guides/provider-guide.md": "../zh-CN/provider-guide.md",
     "doc/testing/golden-dataset.md": "../zh-CN/golden-dataset.md",
     "doc/releases/0.1.0.md": "../zh-CN/release-0.1.0.md",
-    "doc/releases/0.2.0.md": "../zh-CN/release-0.2.0.md",
+    "doc/releases/0.2.0.md": (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.2.0/doc/zh-CN/release-0.2.0.md"
+    ),
 }
 
 
@@ -59,3 +62,9 @@ def test_should_link_english_and_chinese_documentation() -> None:
     for english_path, chinese_link in BILINGUAL_DOCUMENT_PAIRS.items():
         english_content = (ROOT / english_path).read_text(encoding="utf-8")
         assert f"[简体中文]({chinese_link})" in english_content
+
+    chinese_release = (ROOT / "doc/zh-CN/release-0.2.0.md").read_text(encoding="utf-8")
+    assert (
+        "[English](https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.2.0/doc/releases/0.2.0.md)"
+    ) in chinese_release

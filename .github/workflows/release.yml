@@ -100,8 +100,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_NOTES="doc/releases/${GITHUB_REF_NAME#v}.md"
-          test -f "$RELEASE_NOTES"
+          VERSION="${GITHUB_REF_NAME#v}"
+          ENGLISH_NOTES="doc/releases/${VERSION}.md"
+          CHINESE_NOTES="doc/zh-CN/release-${VERSION}.md"
+          COMBINED_NOTES="${RUNNER_TEMP}/gca-${VERSION}-release-notes.md"
+          test -f "$ENGLISH_NOTES"
+          test -f "$CHINESE_NOTES"
+          {
+            cat "$ENGLISH_NOTES"
+            printf '\n\n---\n\n'
+            cat "$CHINESE_NOTES"
+          } > "$COMBINED_NOTES"
           gh release create "$GITHUB_REF_NAME" release-assets/* \
             --title "GCA $GITHUB_REF_NAME" \
-            --notes-file "$RELEASE_NOTES"
+            --notes-file "$COMBINED_NOTES"

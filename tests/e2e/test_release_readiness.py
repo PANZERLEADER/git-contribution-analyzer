@@ -55,7 +55,12 @@ def test_should_define_standalone_release_workflow() -> None:
     assert "gca-packages" in workflow
     assert "SHA256SUMS.txt" in workflow
     assert "gh release create" in workflow
-    assert 'RELEASE_NOTES="doc/releases/${GITHUB_REF_NAME#v}.md"' in workflow
+    assert 'VERSION="${GITHUB_REF_NAME#v}"' in workflow
+    assert 'ENGLISH_NOTES="doc/releases/${VERSION}.md"' in workflow
+    assert 'CHINESE_NOTES="doc/zh-CN/release-${VERSION}.md"' in workflow
+    assert 'cat "$ENGLISH_NOTES"' in workflow
+    assert 'cat "$CHINESE_NOTES"' in workflow
+    assert '--notes-file "$COMBINED_NOTES"' in workflow
     assert "--notes-file doc/releases/0.1.0.md" not in workflow
     assert (ROOT / "gca.spec").is_file()
 
