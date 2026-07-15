@@ -17,6 +17,7 @@ def test_should_ship_required_release_documentation() -> None:
         "doc/testing/golden-dataset.md",
         "doc/releases/0.1.0.md",
         "doc/releases/0.2.0.md",
+        "doc/releases/0.3.0.md",
     )
 
     missing = [path for path in required_documents if not (ROOT / path).is_file()]
@@ -65,10 +66,11 @@ def test_should_define_standalone_release_workflow() -> None:
     assert (ROOT / "gca.spec").is_file()
 
 
-def test_should_record_the_0_2_0_release_in_changelog() -> None:
+def test_should_record_current_release_in_changelog() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
     assert "## 0.2.0 - 2026-07-15" in changelog
+    assert "## 0.3.0 - 2026-07-15" in changelog
 
 
 def test_should_not_publish_real_identity_or_machine_paths_in_documentation() -> None:

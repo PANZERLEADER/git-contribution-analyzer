@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "git-contribution-analyzer"
-version = "0.2.0"
+version = "0.3.0"
 description = "Evidence-backed Git contribution analysis with pluggable LLM providers."
 readme = "README.md"
 requires-python = ">=3.12"

@@ -5,9 +5,9 @@
 `gca` is a CLI-first tool for evidence-backed Git contribution analysis. It separates
 deterministic repository facts from rule-based and LLM-assisted interpretation.
 
-The 0.2.0 release adds repeatable team selection, reversible identity consolidation,
-deterministic multi-dimensional ranking, and persisted CSV export to the 0.1.0 dual-track
-assessment and resume foundation.
+The 0.3.0 release adds calendar assessment series, period-over-period and year-over-year trends,
+historical run comparison, authored/committed/merged/landed/released time bases, and system-local
+time input semantics to the 0.2.0 team assessment foundation.
 
 ## Development
 
@@ -260,6 +260,7 @@ remains readable during 1.x but is deprecated; new integrations should use `gca 
 - [Assessment and resume methodology](doc/guides/methodology.md)
 - [Privacy and provider data boundaries](doc/guides/privacy.md)
 - [Golden dataset](doc/testing/golden-dataset.md)
+- [0.3.0 release](doc/releases/0.3.0.md)
 - [0.2.0 release](doc/releases/0.2.0.md)
 - [0.1.0 release](doc/releases/0.1.0.md)
 - [Performance baseline](doc/reports/performance-baseline.md)

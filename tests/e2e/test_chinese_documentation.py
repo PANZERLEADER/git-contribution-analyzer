@@ -18,6 +18,7 @@ REQUIRED_CHINESE_DOCUMENTS = {
     "doc/zh-CN/golden-dataset.md": "# 黄金数据集",
     "doc/zh-CN/release-0.1.0.md": "# GCA 0.1.0 发布说明",
     "doc/zh-CN/release-0.2.0.md": "# GCA 0.2.0 发布说明",
+    "doc/zh-CN/release-0.3.0.md": "# GCA 0.3.0 发布说明",
 }
 
 BILINGUAL_DOCUMENT_PAIRS = {
@@ -33,6 +34,10 @@ BILINGUAL_DOCUMENT_PAIRS = {
     "doc/releases/0.2.0.md": (
         "https://github.com/PANZERLEADER/git-contribution-analyzer/"
         "blob/v0.2.0/doc/zh-CN/release-0.2.0.md"
+    ),
+    "doc/releases/0.3.0.md": (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.3.0/doc/zh-CN/release-0.3.0.md"
     ),
 }
 
@@ -68,3 +73,11 @@ def test_should_link_english_and_chinese_documentation() -> None:
         "[English](https://github.com/PANZERLEADER/git-contribution-analyzer/"
         "blob/v0.2.0/doc/releases/0.2.0.md)"
     ) in chinese_release
+
+    current_chinese_release = (ROOT / "doc/zh-CN/release-0.3.0.md").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "[English](https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.3.0/doc/releases/0.3.0.md)"
+    ) in current_chinese_release

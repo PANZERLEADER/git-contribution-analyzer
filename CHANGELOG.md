@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-07-15
+
 - Add calendar week/month/quarter assessment series with persisted child runs, workload and
   difficulty trends, period-over-period changes, and year-over-year changes when the matching
   prior-year period is present.
