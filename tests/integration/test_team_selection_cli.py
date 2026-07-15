@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -9,6 +10,7 @@ from git_contribution_analyzer.cli.app import app
 from tests.helpers.git_repo_builder import GitRepoBuilder
 
 runner = CliRunner()
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def _repository(tmp_path: Path) -> Path:
@@ -146,7 +148,7 @@ def test_should_reject_exclusion_without_all_scope(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 2
-    assert "--exclude-person" in result.stderr
+    assert "--exclude-person" in ANSI_ESCAPE.sub("", result.stderr)
 
 
 def test_should_fail_before_creating_run_when_selection_is_empty(tmp_path: Path) -> None:
