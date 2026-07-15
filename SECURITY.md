@@ -1,7 +1,14 @@
 # Security
 
 Do not include repository source, credentials, API keys, or private reports in public issues.
-Report security concerns privately to the project maintainers.
+Report security concerns through
+[GitHub private vulnerability reporting](https://github.com/PANZERLEADER/git-contribution-analyzer/security/advisories/new).
+Do not open a public issue for a suspected vulnerability.
+
+## Supported Versions
+
+Security fixes are provided for the latest published release. Upgrade to the latest release before
+reporting an issue unless the problem prevents upgrading.
 
 The CLI must never persist LLM API keys in repository-local configuration or logs.
 

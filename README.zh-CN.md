@@ -8,6 +8,10 @@ GCA 是一个在本地运行、以证据为基础的 Git 贡献分析工具，�
 GCA 0.4.1 包含 PySide6/QML 桌面工作台，覆盖仓库生命周期、评估、趋势、身份、Evidence、历史
 对比、导出、简历和 Provider 健康检查：
 
+[安装](doc/zh-CN/installation.md) | [参与贡献](CONTRIBUTING.md) | [安全](SECURITY.md) |
+[行为准则](CODE_OF_CONDUCT.md) |
+[版本发布](https://github.com/PANZERLEADER/git-contribution-analyzer/releases)
+
 - 工作评估：分析已完成工作、工作规模、工程难度、技术维度和业务维度。
 - 简历生成：基于已确认人员的贡献证据，生成可人工审核的简历候选内容。
 

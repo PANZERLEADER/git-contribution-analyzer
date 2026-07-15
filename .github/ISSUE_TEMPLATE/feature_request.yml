@@ -1,0 +1,25 @@
+name: Feature request
+description: Propose a focused improvement to GCA.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the workflow without private repository data.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility considerations
+      description: Note possible effects on CLI contracts, schemas, privacy, or packaging.
+    validations:
+      required: true

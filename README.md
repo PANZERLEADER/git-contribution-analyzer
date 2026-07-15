@@ -9,6 +9,10 @@ from rule-based and LLM-assisted interpretation.
 The 0.4.1 release includes a PySide6/QML desktop workbench for repository lifecycle, assessments,
 trends, identities, Evidence, historical comparisons, exports, resumes and Provider health checks.
 
+[Installation](doc/guides/installation.md) | [Contributing](CONTRIBUTING.md) |
+[Security](SECURITY.md) | [Code of Conduct](CODE_OF_CONDUCT.md) |
+[Releases](https://github.com/PANZERLEADER/git-contribution-analyzer/releases)
+
 ## Development
 
 ```powershell
