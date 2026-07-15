@@ -2,7 +2,7 @@
 
 [返回中文 README](../../README.zh-CN.md) | [English documentation](../../README.md)
 
-本目录提供 GCA 0.1.0 核心用户文档的简体中文版本。英文文档仍是原始技术契约；中文文档与其
+本目录提供 GCA 0.2.0 核心用户文档的简体中文版本。英文文档仍是原始技术契约；中文文档与其
 保持相同的 CLI、配置键、状态枚举、Schema 和安全边界。
 
 ## 快速入口
@@ -15,6 +15,7 @@
 - [privacy.md](privacy.md)：本地数据、LLM 上下文、报告分享和保留策略。
 - [provider-guide.md](provider-guide.md)：HTTP、Ollama、Codex CLI、Claude CLI 配置。
 - [golden-dataset.md](golden-dataset.md)：确定性规则和双轨 E2E 的黄金仓库契约。
+- [release-0.2.0.md](release-0.2.0.md)：0.2.0 新能力、兼容性和发布门禁。
 - [release-0.1.0.md](release-0.1.0.md)：0.1.0 能力范围、兼容性和已知限制。
 
 ## 推荐阅读顺序

@@ -100,6 +100,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          RELEASE_NOTES="doc/releases/${GITHUB_REF_NAME#v}.md"
+          test -f "$RELEASE_NOTES"
           gh release create "$GITHUB_REF_NAME" release-assets/* \
             --title "GCA $GITHUB_REF_NAME" \
-            --notes-file doc/releases/0.1.0.md
+            --notes-file "$RELEASE_NOTES"

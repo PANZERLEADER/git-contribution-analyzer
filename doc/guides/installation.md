@@ -22,8 +22,8 @@ On Linux/macOS, use `.venv/bin/python` and `.venv/bin/gca`.
 
 ```powershell
 python -m build
-python -m pip install dist/git_contribution_analyzer-0.1.0-py3-none-any.whl
-pipx install dist/git_contribution_analyzer-0.1.0-py3-none-any.whl
+python -m pip install dist/git_contribution_analyzer-0.2.0-py3-none-any.whl
+pipx install dist/git_contribution_analyzer-0.2.0-py3-none-any.whl
 gca --version
 ```
 

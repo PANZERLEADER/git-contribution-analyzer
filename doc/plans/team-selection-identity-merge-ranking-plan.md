@@ -1105,21 +1105,21 @@ init -> identities list
 
 ## 12. 完成定义
 
-- [ ] 重复 `--person` 和 `--all --exclude-person` 全部可用。
-- [ ] selection 写入 v2 report，Snapshot 对 selector 顺序稳定。
-- [ ] merge dry-run/execute/list/unmerge 全部可用。
-- [ ] 合并不删除 Person、不改写历史 run。
-- [ ] map 命令兼容并使用可撤销事件。
-- [ ] v1 历史报告无变化且可重放。
-- [ ] workload/difficulty/delivery 多维 dense ranking 可用。
-- [ ] 权重配置可选，所有计算透明且带版本。
-- [ ] LLM 不接触或修改任何排名字段。
-- [ ] CSV 从持久化 v2 run 导出，默认不含邮箱。
-- [ ] 0005/0006 upgrade/downgrade 测试通过。
-- [ ] 黄金 E2E 覆盖筛选、合并、排名和 CSV。
-- [ ] Domain/Application 新代码覆盖率 >=90%，全项目 >=80%。
+- [x] 重复 `--person` 和 `--all --exclude-person` 全部可用。
+- [x] selection 写入 v2 report，Snapshot 对 selector 顺序稳定。
+- [x] merge dry-run/execute/list/unmerge 全部可用。
+- [x] 合并不删除 Person、不改写历史 run。
+- [x] map 命令兼容并使用可撤销事件。
+- [x] v1 历史报告无变化且可重放。
+- [x] workload/difficulty/delivery 多维 dense ranking 可用。
+- [x] 权重配置可选，所有计算透明且带版本。
+- [x] LLM 不接触或修改任何排名字段。
+- [x] CSV 从持久化 v2 run 导出，默认不含邮箱。
+- [x] 0005/0006 upgrade/downgrade 测试通过。
+- [x] 黄金 E2E 覆盖筛选、合并、排名和 CSV。
+- [x] Domain/Application 新代码覆盖率 >=90%，全项目 >=80%。
 - [ ] Windows/Linux/macOS CI 和 release workflow 全部通过。
-- [ ] 中英文文档、CHANGELOG 和隐私边界同步。
+- [x] 中英文文档、CHANGELOG 和隐私边界同步。
 
 ## 13. 实施顺序
 
@@ -1135,4 +1135,3 @@ init -> identities list
 
 任何阶段如果需要修改已冻结的 v1 Schema、删除历史 Person、让 LLM 影响分数，必须先更新提案和
 本实施方案，不能直接进入实现。
-

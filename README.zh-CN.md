@@ -5,7 +5,8 @@
 `gca` 是一个以 CLI 为主要入口、以证据为基础的 Git 贡献分析工具。它将可重复验证的
 Git 仓库事实，与确定性规则、LLM 辅助解释严格分离。
 
-GCA 0.1.0 提供两条相互隔离但共享证据的数据流水线：
+GCA 0.2.0 提供两条相互隔离但共享证据的数据流水线，并增加多人筛选、可逆身份合并、
+确定性多维排名和持久化 CSV 导出：
 
 - 工作评估：分析已完成工作、工作规模、工程难度、技术维度和业务维度。
 - 简历生成：基于已确认人员的贡献证据，生成可人工审核的简历候选内容。
@@ -23,7 +24,7 @@ python -m venv .venv
 .\.venv\Scripts\gca.exe --help
 ```
 
-也可以从 [v0.1.0 Release](https://github.com/PANZERLEADER/git-contribution-analyzer/releases/tag/v0.1.0)
+也可以从 [v0.2.0 Release](https://github.com/PANZERLEADER/git-contribution-analyzer/releases/tag/v0.2.0)
 安装 wheel，或下载 Windows、Linux、macOS standalone 制品。详细步骤见
 [中文安装指南](doc/zh-CN/installation.md)。
 
@@ -212,6 +213,7 @@ delivery 的 dense ranking；只有提供 `--ranking-config` YAML 时才生成 c
 - [隐私与数据边界](doc/zh-CN/privacy.md)
 - [LLM Provider 指南](doc/zh-CN/provider-guide.md)
 - [黄金数据集](doc/zh-CN/golden-dataset.md)
+- [0.2.0 发布说明](doc/zh-CN/release-0.2.0.md)
 - [0.1.0 发布说明](doc/zh-CN/release-0.1.0.md)
 
 英文文档仍作为原始技术契约保留。中文文档翻译命令、边界和方法论，不改变程序行为。

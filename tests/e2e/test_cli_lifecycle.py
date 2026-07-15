@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import tomllib
 from pathlib import Path
 
 from jsonschema import validate
 from sqlalchemy import create_engine, text
 from typer.testing import CliRunner
 
+from git_contribution_analyzer import __version__
 from git_contribution_analyzer.cli.app import app
 
 runner = CliRunner()
@@ -19,7 +21,19 @@ def test_should_show_help_and_version() -> None:
     assert help_result.exit_code == 0
     assert "Git contribution analysis" in help_result.stdout
     assert version_result.exit_code == 0
-    assert "0.2.0.dev0" in version_result.stdout
+    metadata = tomllib.loads(
+        (Path(__file__).parents[2] / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    lock = tomllib.loads(
+        (Path(__file__).parents[2] / "uv.lock").read_text(encoding="utf-8")
+    )
+    locked_project = next(
+        package for package in lock["package"] if package["name"] == "git-contribution-analyzer"
+    )
+    assert version_result.stdout.strip() == "0.2.0"
+    assert metadata["project"]["version"] == "0.2.0"
+    assert locked_project["version"] == "0.2.0"
+    assert __version__ == "0.2.0"
 
 
 def test_should_reject_init_when_path_is_not_repository(tmp_path: Path) -> None:

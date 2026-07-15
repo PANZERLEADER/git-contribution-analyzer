@@ -17,6 +17,7 @@ REQUIRED_CHINESE_DOCUMENTS = {
     "doc/zh-CN/provider-guide.md": "# LLM Provider 指南",
     "doc/zh-CN/golden-dataset.md": "# 黄金数据集",
     "doc/zh-CN/release-0.1.0.md": "# GCA 0.1.0 发布说明",
+    "doc/zh-CN/release-0.2.0.md": "# GCA 0.2.0 发布说明",
 }
 
 BILINGUAL_DOCUMENT_PAIRS = {
@@ -29,6 +30,7 @@ BILINGUAL_DOCUMENT_PAIRS = {
     "doc/guides/provider-guide.md": "../zh-CN/provider-guide.md",
     "doc/testing/golden-dataset.md": "../zh-CN/golden-dataset.md",
     "doc/releases/0.1.0.md": "../zh-CN/release-0.1.0.md",
+    "doc/releases/0.2.0.md": "../zh-CN/release-0.2.0.md",
 }
 
 
