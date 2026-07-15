@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from git_contribution_analyzer.cli.app import app
 from tests.helpers.git_repo_builder import GitRepoBuilder
 
 runner = CliRunner()
+ANSI_ESCAPE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 
 
 def _repository(tmp_path: Path) -> Path:
@@ -58,7 +60,8 @@ def test_should_reject_reversed_assessment_boundaries(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 2
-    assert "--since must be earlier" in (result.stdout + result.stderr)
+    output = ANSI_ESCAPE.sub("", result.stdout + result.stderr)
+    assert "--since must be earlier" in output
 
 
 def test_should_generate_monthly_series_with_trends_in_one_command(tmp_path: Path) -> None:
