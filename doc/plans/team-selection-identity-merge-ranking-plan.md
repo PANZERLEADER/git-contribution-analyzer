@@ -1118,7 +1118,7 @@ init -> identities list
 - [x] 0005/0006 upgrade/downgrade 测试通过。
 - [x] 黄金 E2E 覆盖筛选、合并、排名和 CSV。
 - [x] Domain/Application 新代码覆盖率 >=90%，全项目 >=80%。
-- [ ] Windows/Linux/macOS CI 和 release workflow 全部通过。
+- [x] Windows/Linux/macOS CI 和 release workflow 全部通过。
 - [x] 中英文文档、CHANGELOG 和隐私边界同步。
 
 ## 13. 实施顺序
