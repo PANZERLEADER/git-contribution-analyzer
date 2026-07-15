@@ -5,9 +5,13 @@ from pathlib import Path
 
 import pytest
 from alembic import command
+from sqlalchemy import inspect
 from typer.testing import CliRunner
 
-from git_contribution_analyzer.adapters.storage.sqlite.database import _alembic_config
+from git_contribution_analyzer.adapters.storage.sqlite.database import (
+    _alembic_config,
+    create_database_engine,
+)
 from git_contribution_analyzer.cli.app import app
 from tests.helpers.git_repo_builder import GitRepoBuilder
 
@@ -173,3 +177,86 @@ def test_should_block_downgrade_while_merge_is_active(tmp_path: Path) -> None:
         command.downgrade(
             _alembic_config(repo / ".gca" / "index.sqlite"), "0005_run_types"
         )
+
+
+def test_should_record_and_reverse_alias_map_event(tmp_path: Path) -> None:
+    repo = _repository(tmp_path)
+
+    mapped = runner.invoke(
+        app,
+        [
+            "identities",
+            "map",
+            str(repo),
+            "--name",
+            "Alice",
+            "--email",
+            "alice@example.com",
+            "--person-name",
+            "Bob",
+            "--person-email",
+            "bob@example.com",
+            "--json",
+        ],
+    )
+    events = _json("identities", "merges", str(repo))
+    identities_after_map = _json("identities", "list", str(repo))
+
+    assert mapped.exit_code == 0, mapped.stdout
+    event = events["merges"][0]
+    assert event["eventType"] == "ALIAS_MAP"
+    assert event["status"] == "ACTIVE"
+    alice = next(
+        person for person in identities_after_map["persons"] if person["name"] == "Alice"
+    )
+    assert alice["active"] is False
+
+    reverted = _json(
+        "identities",
+        "unmerge",
+        str(repo),
+        "--merge-id",
+        str(event["mergeId"]),
+        "--yes",
+    )
+    restored = _json("identities", "list", str(repo))
+    restored_alice = next(person for person in restored["persons"] if person["name"] == "Alice")
+
+    assert reverted["status"] == "REVERTED"
+    assert restored_alice["active"] is True
+    assert restored_alice["mergedIntoPersonId"] is None
+    assert [alias["email"] for alias in restored_alice["aliases"]] == ["alice@example.com"]
+
+
+def test_should_downgrade_and_upgrade_identity_merge_migration_without_active_events(
+    tmp_path: Path,
+) -> None:
+    repo = _repository(tmp_path)
+    database = repo / ".gca" / "index.sqlite"
+
+    command.downgrade(_alembic_config(database), "0005_run_types")
+    engine = create_database_engine(database)
+    try:
+        downgraded_tables = set(inspect(engine).get_table_names())
+        downgraded_person_columns = {
+            column["name"] for column in inspect(engine).get_columns("persons")
+        }
+    finally:
+        engine.dispose()
+
+    assert "identity_merge_events" not in downgraded_tables
+    assert "active" not in downgraded_person_columns
+    assert "merged_into_person_id" not in downgraded_person_columns
+
+    command.upgrade(_alembic_config(database), "head")
+    engine = create_database_engine(database)
+    try:
+        upgraded_tables = set(inspect(engine).get_table_names())
+        upgraded_person_columns = {
+            column["name"] for column in inspect(engine).get_columns("persons")
+        }
+    finally:
+        engine.dispose()
+
+    assert "identity_merge_events" in upgraded_tables
+    assert {"active", "merged_into_person_id"} <= upgraded_person_columns

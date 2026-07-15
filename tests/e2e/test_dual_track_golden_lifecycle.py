@@ -82,6 +82,95 @@ def test_should_complete_dual_track_golden_lifecycle_in_unicode_path(
     assert project_report["ranking"]["enabled"] is False
     assert project_report["ranking"]["dimensions"] == []
 
+    _run(
+        "identities",
+        "map",
+        str(repo),
+        "--name",
+        fixture.bob_name,
+        "--email",
+        fixture.bob_email,
+        "--person-name",
+        fixture.bob_name,
+        "--person-email",
+        fixture.bob_email,
+    )
+    ranking_config = tmp_path / "ranking.yml"
+    ranking_config.write_text(
+        """schemaVersion: "1.0"
+rankingRuleVersion: performance-ranking-v1
+weights:
+  workload: 0.45
+  difficulty: 0.35
+  delivery: 0.20
+normalization: cohort-max
+ties: dense
+""",
+        encoding="utf-8",
+    )
+    ranked = _run(
+        "assess",
+        str(repo),
+        "--person",
+        fixture.alice_email,
+        "--person",
+        fixture.bob_email,
+        "--ranking-config",
+        str(ranking_config),
+        "--no-llm",
+        "--json",
+    )
+    ranked_report = json.loads(ranked.stdout)["data"]
+    assert ranked_report["ranking"]["enabled"] is True
+    assert ranked_report["ranking"]["composite"]["entries"]
+
+    csv_path = tmp_path / "reports" / "team.csv"
+    _run(
+        "report",
+        str(repo),
+        "--run",
+        ranked_report["run"]["id"],
+        "--format",
+        "csv",
+        "--output",
+        str(csv_path),
+    )
+    csv_payload = csv_path.read_bytes()
+    assert csv_payload.startswith(b"\xef\xbb\xbf")
+    assert fixture.alice_email.encode() not in csv_payload
+    assert fixture.bob_email.encode() not in csv_payload
+
+    merged = _run(
+        "identities",
+        "merge",
+        str(repo),
+        "--source",
+        fixture.alice_email,
+        "--target",
+        fixture.bob_email,
+        "--yes",
+        "--json",
+    )
+    merge_event = json.loads(merged.stdout)["data"]
+    merged_assessment = _run(
+        "assess",
+        str(repo),
+        "--person",
+        fixture.bob_email,
+        "--no-llm",
+        "--json",
+    )
+    assert len(json.loads(merged_assessment.stdout)["data"]["evidence"]) > 1
+    _run(
+        "identities",
+        "unmerge",
+        str(repo),
+        "--merge-id",
+        merge_event["mergeId"],
+        "--yes",
+        "--json",
+    )
+
     resume = _run(
         "resume",
         str(repo),

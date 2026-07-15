@@ -19,6 +19,83 @@ from git_contribution_analyzer.adapters.storage.sqlite.models import (
 from git_contribution_analyzer.domain.errors import IdentityResolutionError, WorkspaceError
 
 
+def reassign_alias(
+    connection: Connection,
+    repository_id: str,
+    alias_id: str,
+    target_person_id: str,
+) -> str | None:
+    alias = connection.execute(
+        select(identity_aliases).where(
+            identity_aliases.c.id == alias_id,
+            identity_aliases.c.repository_id == repository_id,
+        )
+    ).mappings().one_or_none()
+    if alias is None:
+        raise WorkspaceError(f"Identity alias not found: {alias_id}")
+    source_person_id = str(alias["person_id"])
+    if source_person_id == target_person_id:
+        return None
+
+    source = connection.execute(
+        select(persons).where(
+            persons.c.id == source_person_id,
+            persons.c.repository_id == repository_id,
+        )
+    ).mappings().one()
+    target_exists = connection.execute(
+        select(func.count()).select_from(persons).where(
+            persons.c.id == target_person_id,
+            persons.c.repository_id == repository_id,
+        )
+    ).scalar_one()
+    if not target_exists:
+        raise WorkspaceError(f"Identity map target not found: {target_person_id}")
+
+    source_snapshot = {
+        "person": {
+            "id": source_person_id,
+            "name": str(source["canonical_name"]),
+            "email": str(source["canonical_email"]),
+            "kind": str(source["kind"]),
+            "confirmed": bool(source["confirmed"]),
+            "active": bool(source["active"]),
+            "mergedIntoPersonId": source["merged_into_person_id"],
+        },
+        "aliasIds": [alias_id],
+    }
+    event_id = str(uuid4())
+    connection.execute(
+        update(identity_aliases)
+        .where(identity_aliases.c.id == alias_id)
+        .values(person_id=target_person_id)
+    )
+    remaining = connection.execute(
+        select(func.count()).select_from(identity_aliases).where(
+            identity_aliases.c.person_id == source_person_id
+        )
+    ).scalar_one()
+    if remaining == 0:
+        connection.execute(
+            update(persons)
+            .where(persons.c.id == source_person_id)
+            .values(active=False, merged_into_person_id=target_person_id)
+        )
+    connection.execute(
+        insert(identity_merge_events).values(
+            id=event_id,
+            repository_id=repository_id,
+            event_type="ALIAS_MAP",
+            target_person_id=target_person_id,
+            source_person_ids_json=_canonical_json([source_person_id]),
+            moved_alias_ids_json=_canonical_json([alias_id]),
+            source_snapshots_json=_canonical_json([source_snapshot]),
+            status="ACTIVE",
+        )
+    )
+    return event_id
+
+
 class SqliteIdentityMergeStore:
     def __init__(self, database_path: Path, repository_root: str) -> None:
         self.database_path = database_path
@@ -120,6 +197,8 @@ class SqliteIdentityMergeStore:
                 snapshots = json.loads(str(row["source_snapshots_json"]))
                 for snapshot in snapshots:
                     source_id = str(snapshot["person"]["id"])
+                    source_active = bool(snapshot["person"].get("active", True))
+                    source_redirect = snapshot["person"].get("mergedIntoPersonId")
                     alias_ids = [str(value) for value in snapshot["aliasIds"]]
                     if alias_ids:
                         current = connection.execute(
@@ -149,7 +228,10 @@ class SqliteIdentityMergeStore:
                     connection.execute(
                         update(persons)
                         .where(persons.c.id == source_id)
-                        .values(active=True, merged_into_person_id=None)
+                        .values(
+                            active=source_active,
+                            merged_into_person_id=source_redirect,
+                        )
                     )
                 reverted_at = datetime.now(UTC)
                 connection.execute(

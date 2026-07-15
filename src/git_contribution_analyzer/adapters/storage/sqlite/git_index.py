@@ -9,6 +9,7 @@ from sqlalchemy import Connection, delete, func, insert, select, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from git_contribution_analyzer.adapters.storage.sqlite.database import create_database_engine
+from git_contribution_analyzer.adapters.storage.sqlite.identity_merge import reassign_alias
 from git_contribution_analyzer.adapters.storage.sqlite.models import (
     commit_delivery,
     commit_parents,
@@ -393,7 +394,6 @@ class SqliteGitIndexStore:
                 ).mappings().one_or_none()
                 if alias is None:
                     raise WorkspaceError(f"Identity alias not found: {name} <{email}>")
-                old_person_id = str(alias["person_id"])
                 person_id = str(
                     uuid5(
                         NAMESPACE_URL,
@@ -422,28 +422,22 @@ class SqliteGitIndexStore:
                         )
                     ).scalar_one()
                 )
+                reassign_alias(
+                    connection,
+                    repository_id,
+                    str(alias["id"]),
+                    person_id,
+                )
                 connection.execute(
                     update(identity_aliases)
                     .where(identity_aliases.c.id == alias["id"])
                     .values(
-                        person_id=person_id,
                         source="MANUAL",
                         confidence=1.0,
                         confirmed=True,
                         rationale="Confirmed by user",
                     )
                 )
-                remaining = connection.execute(
-                    select(func.count()).select_from(identity_aliases).where(
-                        identity_aliases.c.person_id == old_person_id
-                    )
-                ).scalar_one()
-                if remaining == 0 and old_person_id != person_id:
-                    connection.execute(
-                        update(persons)
-                        .where(persons.c.id == old_person_id)
-                        .values(active=False, merged_into_person_id=person_id)
-                    )
                 return {
                     "id": person_id,
                     "name": person_name,
