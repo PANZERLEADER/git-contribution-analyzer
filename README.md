@@ -206,7 +206,10 @@ the target branch first-parent integration point, merged time includes only work
 merge commit, and released time is the tag creation time. `--period week|month|quarter` requires
 both boundaries and emits persisted trends, period-over-period deltas, and year-over-year deltas
 when the matching prior-year period is in range. Weeks start on Monday and partial boundary periods
-are marked. Run `gca index` once after upgrading so old timestamps are rebuilt in UTC.
+are marked. Offset-free `--since` and `--until` values use the host system time zone; explicit `Z`
+or numeric offsets remain authoritative, and calendar periods follow that local calendar. The Git
+index and SQLite query bindings remain normalized to UTC. Run `gca index` once after upgrading so
+old timestamps are rebuilt in UTC.
 
 Assessment reports include technical and business summaries, Evidence IDs, rule versions,
 confidence, and gaps. Repeatable `--rank-by` enables dense dimension rankings. An explicit

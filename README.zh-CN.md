@@ -192,7 +192,9 @@ delivery 的 dense ranking；只有提供 `--ranking-config` YAML 时才生成 c
 `landed` 使用目标分支 first-parent 集成点，`merged` 只统计 merge commit 引入的工作，
 `released` 使用 tag creatordate。`--period week|month|quarter` 要求同时提供 `--since` 和
 `--until`，生成持久化周期序列、环比，以及范围内存在上年对应周期时的同比。自然周从周一开始；
-不完整首尾周期会明确标记。升级到此版本后应执行一次 `gca index`，将旧索引时间统一重建为 UTC。
+不完整首尾周期会明确标记。`--since/--until` 未带 `Z` 或偏移时按运行机器的系统时区解释，
+显式 `Z`、`+08:00` 等偏移保持优先；自然周期也按该系统本地日历切分。索引和 SQLite 查询参数
+仍在内部统一为 UTC。升级到此版本后应执行一次 `gca index`，将旧索引时间统一重建为 UTC。
 
 ## 简历生成
 

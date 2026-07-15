@@ -63,6 +63,8 @@ gca report <repo> --run latest --format csv --output team.csv
 `--period` 可选 `week`、`month`、`quarter`，并要求同时提供合法且顺序正确的 `--since`、
 `--until`。周期命令为每个自然周期保存一个工作评估 run，并额外保存包含环比/同比的 series run。
 同比仅在请求范围包含上年对应自然周期时生成。周从周一开始，不完整首尾周期标记为 partial。
+未带时区的日期和时间使用运行机器的系统时区；带 `Z` 或数字偏移的输入使用显式时区。报告保留
+输入偏移，索引查询在内部转换为 UTC。
 
 身份维护支持可逆合并：
 

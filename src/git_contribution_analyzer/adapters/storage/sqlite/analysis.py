@@ -244,9 +244,9 @@ class SqliteAnalysisStore:
                     "COMMITTED": commits.c.committed_at,
                 }.get(filters.time_basis)
                 if filters.since and time_column is not None:
-                    statement = statement.where(time_column >= filters.since)
+                    statement = statement.where(time_column >= _aware_utc(filters.since))
                 if filters.until and time_column is not None:
-                    statement = statement.where(time_column <= filters.until)
+                    statement = statement.where(time_column <= _aware_utc(filters.until))
                 if filters.release:
                     release_ref = (
                         filters.release

@@ -42,7 +42,12 @@ def assess_work_series(
 ) -> dict[str, Any]:
     if filters.since is None or filters.until is None:
         raise ValueError("Periodic assessment requires both since and until")
-    windows = split_periods(filters.since, filters.until, period)
+    windows = split_periods(
+        filters.since,
+        filters.until,
+        period,
+        use_system_timezone=filters.system_timezone,
+    )
     repository = discover_repository(path)
     layout = WorkspaceLayout.for_repository(repository.root)
     config = load_config(layout.config)
@@ -126,6 +131,7 @@ def assess_work_series(
         },
         "period": period.casefold(),
         "timeBasis": filters.time_basis,
+        "inputTimeZone": "SYSTEM" if filters.system_timezone else "EXPLICIT",
         "range": {
             "since": filters.since.isoformat(),
             "until": filters.until.isoformat(),

@@ -68,6 +68,8 @@ email unless `--include-email` is explicitly supplied.
 boundaries. Each calendar period is persisted as a work assessment run, together with a series run
 containing period-over-period and available year-over-year changes. Weeks start on Monday; partial
 boundary periods are marked.
+Offset-free dates and times use the host system time zone. Inputs with `Z` or a numeric offset use
+that explicit zone. Reports retain the input offset while index queries convert boundaries to UTC.
 
 Identity maintenance supports reversible merges:
 

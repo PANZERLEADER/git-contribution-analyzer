@@ -13,6 +13,7 @@ class AnalysisFilters:
     scope: str | None = None
     delivery: str | None = None
     time_basis: str = "AUTHORED"
+    system_timezone: bool = False
 
     def as_dict(self) -> dict[str, str | None]:
         result = {

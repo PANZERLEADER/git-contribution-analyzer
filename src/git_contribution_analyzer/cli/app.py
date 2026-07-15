@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, time
+from datetime import datetime, time
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -68,6 +68,7 @@ providers_app = typer.Typer(help="Inspect and test pluggable LLM providers.")
 app.add_typer(identities_app, name="identities")
 app.add_typer(runs_app, name="runs")
 app.add_typer(providers_app, name="providers")
+BOUNDARY_HELP = "Inclusive ISO date/time; values without an offset use the system time zone."
 
 
 def _version_callback(value: bool) -> None:
@@ -189,8 +190,8 @@ def analyze_command(
             help="Analyze every Git person, including unconfirmed identities.",
         ),
     ] = False,
-    since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
-    until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
+    since: Annotated[str | None, typer.Option("--since", help=BOUNDARY_HELP)] = None,
+    until: Annotated[str | None, typer.Option("--until", help=BOUNDARY_HELP)] = None,
     branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
     release: Annotated[str | None, typer.Option("--release", help="Release tag.")] = None,
     scope: Annotated[str | None, typer.Option("--scope", help="Repository path prefix.")] = None,
@@ -226,6 +227,7 @@ def analyze_command(
             release=release,
             scope=scope,
             delivery=delivery,
+            system_timezone=_uses_system_timezone(since, until),
         )
         if all_people:
             report = analyze_project(path, filters=filters)
@@ -294,8 +296,8 @@ def assess_command(
             help="YAML weights for an optional composite score.",
         ),
     ] = None,
-    since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
-    until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
+    since: Annotated[str | None, typer.Option("--since", help=BOUNDARY_HELP)] = None,
+    until: Annotated[str | None, typer.Option("--until", help=BOUNDARY_HELP)] = None,
     branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
     release: Annotated[str | None, typer.Option("--release", help="Release tag.")] = None,
     scope: Annotated[str | None, typer.Option("--scope", help="Repository path prefix.")] = None,
@@ -361,6 +363,7 @@ def assess_command(
             scope=scope,
             delivery=delivery,
             time_basis=normalized_time_basis,
+            system_timezone=_uses_system_timezone(since, until),
         )
         if normalized_period is not None:
             report = assess_work_series(
@@ -409,8 +412,8 @@ def assess_command(
 def resume_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
     person: Annotated[str, typer.Option("--person", help="Confirmed person name or email.")] = "",
-    since: Annotated[str | None, typer.Option("--since", help="Inclusive ISO date/time.")] = None,
-    until: Annotated[str | None, typer.Option("--until", help="Inclusive ISO date/time.")] = None,
+    since: Annotated[str | None, typer.Option("--since", help=BOUNDARY_HELP)] = None,
+    until: Annotated[str | None, typer.Option("--until", help=BOUNDARY_HELP)] = None,
     branch: Annotated[str | None, typer.Option("--branch", help="Reachable branch ref.")] = None,
     release: Annotated[str | None, typer.Option("--release", help="Release tag.")] = None,
     scope: Annotated[str | None, typer.Option("--scope", help="Repository path prefix.")] = None,
@@ -450,6 +453,7 @@ def resume_command(
                 branch=branch,
                 release=release,
                 scope=scope,
+                system_timezone=_uses_system_timezone(since, until),
             ),
             target_role=target_role,
             language=language,
@@ -482,8 +486,19 @@ def _parse_boundary(value: str | None, *, end_of_day: bool) -> datetime | None:
     if parsed.tzinfo is None:
         if "T" not in value and end_of_day:
             parsed = datetime.combine(parsed.date(), time.max)
-        parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone(UTC)
+        parsed = _localize_system_time(parsed)
+    return parsed
+
+
+def _localize_system_time(value: datetime) -> datetime:
+    return value.astimezone()
+
+
+def _uses_system_timezone(*values: str | None) -> bool:
+    supplied = tuple(value for value in values if value is not None)
+    return bool(supplied) and all(
+        datetime.fromisoformat(value).tzinfo is None for value in supplied
+    )
 
 
 def _parse_boundaries(

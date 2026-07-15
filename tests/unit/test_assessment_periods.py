@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 
+import pytest
+
+import git_contribution_analyzer.domain.services.assessment_periods as assessment_periods
 from git_contribution_analyzer.domain.services.assessment_periods import (
     build_period_comparison,
     split_periods,
@@ -41,6 +44,31 @@ def test_should_split_calendar_quarters_across_year_boundary() -> None:
 
     assert [period.label for period in periods] == ["2025-Q4", "2026-Q1"]
     assert all(not period.partial for period in periods)
+
+
+def test_should_relocalize_system_calendar_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    winter = timezone(timedelta(hours=8))
+    summer = timezone(timedelta(hours=9))
+
+    def localize(value: datetime) -> datetime:
+        active_timezone = summer if value.month >= 4 and value.month <= 9 else winter
+        return value.replace(tzinfo=active_timezone)
+
+    monkeypatch.setattr(assessment_periods, "_localize_system_time", localize)
+
+    periods = split_periods(
+        datetime(2026, 1, 1, tzinfo=winter),
+        datetime(2026, 6, 30, 23, 59, 59, 999999, tzinfo=summer),
+        "quarter",
+        use_system_timezone=True,
+    )
+
+    assert periods[0].since.utcoffset() == timedelta(hours=8)
+    assert periods[0].until.utcoffset() == timedelta(hours=8)
+    assert periods[1].since.utcoffset() == timedelta(hours=9)
+    assert periods[1].until.utcoffset() == timedelta(hours=9)
 
 
 def test_should_calculate_period_over_period_and_year_over_year() -> None:

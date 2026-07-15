@@ -9,6 +9,7 @@ def render_work_assessment_series_markdown(report: dict[str, Any]) -> str:
         "",
         f"- Period: **{report['period']}**",
         f"- Time basis: **{report['timeBasis']}**",
+        f"- Input time zone: **{report.get('inputTimeZone', 'LEGACY_UTC')}**",
         f"- Range: {report['range']['since']} to {report['range']['until']}",
         "",
         "| Period | Completed | Pending | Rework | Workload points | Difficulty points |",

@@ -52,6 +52,11 @@ when the series contains the corresponding prior-year period. Comparisons requir
 repository, cohort, filters, and rule versions. Git timestamps are normalized to UTC; rebuild an
 existing index once after upgrading.
 
+Offset-free CLI dates and times use the host system time zone; `Z` and numeric offsets remain
+authoritative. Week, month, and quarter boundaries are calculated in that same local calendar,
+including system daylight-saving transitions. Conversion to UTC happens only for index storage and
+SQLite time filtering.
+
 ## Resume Claims
 
 - `CONTRIBUTED`: contribution evidence exists, but responsibility boundaries are incomplete.

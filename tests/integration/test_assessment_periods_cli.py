@@ -84,6 +84,7 @@ def test_should_generate_monthly_series_with_trends_in_one_command(tmp_path: Pat
     assert report["reportType"] == "WORK_ASSESSMENT_SERIES"
     assert report["period"] == "month"
     assert report["timeBasis"] == "AUTHORED"
+    assert report["inputTimeZone"] == "SYSTEM"
     assert [entry["label"] for entry in report["periods"]] == ["2026-01", "2026-02"]
     assert all(entry["runId"] for entry in report["periods"])
     assert report["periods"][1]["comparison"]["periodOverPeriod"] is not None

@@ -21,6 +21,7 @@
     },
     "period": { "enum": ["week", "month", "quarter"] },
     "timeBasis": { "enum": ["AUTHORED", "COMMITTED", "MERGED", "LANDED", "RELEASED"] },
+    "inputTimeZone": { "enum": ["SYSTEM", "EXPLICIT"] },
     "range": {
       "type": "object",
       "required": ["since", "until"],

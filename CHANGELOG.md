@@ -8,8 +8,9 @@
 - Add authored, committed, merged, landed, and released assessment time bases derived from Git
   timestamps, first-parent integration points, and release tag creation times.
 - Add `gca runs compare` for deterministic comparison of two historical work assessment runs.
-- Reject reversed `--since`/`--until` boundaries and normalize indexed Git timestamps and CLI
-  boundaries to UTC. Existing workspaces should run `gca index` once after upgrading.
+- Reject reversed `--since`/`--until` boundaries, interpret offset-free inputs in the system time
+  zone, preserve explicit offsets, and normalize indexed Git timestamps and SQLite query bindings
+  to UTC. Existing workspaces should run `gca index` once after upgrading.
 
 ## 0.2.0 - 2026-07-15
 

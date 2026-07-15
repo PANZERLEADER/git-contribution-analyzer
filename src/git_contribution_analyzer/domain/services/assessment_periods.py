@@ -27,7 +27,13 @@ class AssessmentPeriod:
     comparison_key: tuple[int, int]
 
 
-def split_periods(since: datetime, until: datetime, period: str) -> tuple[AssessmentPeriod, ...]:
+def split_periods(
+    since: datetime,
+    until: datetime,
+    period: str,
+    *,
+    use_system_timezone: bool = False,
+) -> tuple[AssessmentPeriod, ...]:
     normalized = period.casefold()
     if normalized not in SUPPORTED_PERIODS:
         raise ValueError(f"Unsupported assessment period: {period}")
@@ -37,9 +43,14 @@ def split_periods(since: datetime, until: datetime, period: str) -> tuple[Assess
     periods: list[AssessmentPeriod] = []
     cursor = since
     while cursor <= until:
-        start, next_start, label, comparison_key = _calendar_bounds(cursor, normalized)
+        start, next_start, label, comparison_key = _calendar_bounds(
+            cursor, normalized, use_system_timezone=use_system_timezone
+        )
+        natural_until = _period_end(
+            next_start, use_system_timezone=use_system_timezone
+        )
         period_since = max(cursor, start)
-        period_until = min(until, next_start - timedelta(microseconds=1))
+        period_until = min(until, natural_until)
         periods.append(
             AssessmentPeriod(
                 label=label,
@@ -47,7 +58,7 @@ def split_periods(since: datetime, until: datetime, period: str) -> tuple[Assess
                 until=period_until,
                 partial=(
                     period_since != start
-                    or period_until != next_start - timedelta(microseconds=1)
+                    or period_until != natural_until
                 ),
                 comparison_key=comparison_key,
             )
@@ -112,14 +123,20 @@ def _metric_changes(
 
 
 def _calendar_bounds(
-    value: datetime, period: str
+    value: datetime, period: str, *, use_system_timezone: bool
 ) -> tuple[datetime, datetime, str, tuple[int, int]]:
-    midnight = value.replace(hour=0, minute=0, second=0, microsecond=0)
+    local_value = value.replace(tzinfo=None) if use_system_timezone else value
+    midnight = local_value.replace(hour=0, minute=0, second=0, microsecond=0)
     if period == "week":
-        start = midnight - timedelta(days=value.weekday())
+        start = midnight - timedelta(days=local_value.weekday())
         next_start = start + timedelta(days=7)
         iso_year, iso_week, _weekday = start.isocalendar()
-        return start, next_start, f"{iso_year}-W{iso_week:02d}", (iso_year, iso_week)
+        return (
+            _calendar_time(start, use_system_timezone),
+            _calendar_time(next_start, use_system_timezone),
+            f"{iso_year}-W{iso_week:02d}",
+            (iso_year, iso_week),
+        )
     if period == "month":
         start = midnight.replace(day=1)
         next_start = (
@@ -127,9 +144,14 @@ def _calendar_bounds(
             if start.month == 12
             else start.replace(month=start.month + 1)
         )
-        return start, next_start, f"{start.year}-{start.month:02d}", (start.year, start.month)
+        return (
+            _calendar_time(start, use_system_timezone),
+            _calendar_time(next_start, use_system_timezone),
+            f"{start.year}-{start.month:02d}",
+            (start.year, start.month),
+        )
 
-    quarter = (value.month - 1) // 3 + 1
+    quarter = (local_value.month - 1) // 3 + 1
     start_month = (quarter - 1) * 3 + 1
     start = midnight.replace(month=start_month, day=1)
     next_start = (
@@ -137,4 +159,24 @@ def _calendar_bounds(
         if start_month == 10
         else start.replace(month=start_month + 3)
     )
-    return start, next_start, f"{start.year}-Q{quarter}", (start.year, quarter)
+    return (
+        _calendar_time(start, use_system_timezone),
+        _calendar_time(next_start, use_system_timezone),
+        f"{start.year}-Q{quarter}",
+        (start.year, quarter),
+    )
+
+
+def _period_end(next_start: datetime, *, use_system_timezone: bool) -> datetime:
+    if not use_system_timezone:
+        return next_start - timedelta(microseconds=1)
+    naive_end = next_start.replace(tzinfo=None) - timedelta(microseconds=1)
+    return _localize_system_time(naive_end)
+
+
+def _calendar_time(value: datetime, use_system_timezone: bool) -> datetime:
+    return _localize_system_time(value) if use_system_timezone else value
+
+
+def _localize_system_time(value: datetime) -> datetime:
+    return value.astimezone()
