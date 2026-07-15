@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.4.1 - 2026-07-15
+
+- Keep CLI standalone artifacts free of PySide6, shiboken6 and QML resources when GUI build
+  dependencies are installed in the same release environment.
+- Verify the final CLI PyInstaller archive before release and fail if Qt runtime entries are found.
+- Read the macOS GUI bundle version from project metadata instead of hard-coding it in the spec.
+
 ## 0.4.0 - 2026-07-15
 
 - Add an optional PySide6/QML desktop application for Windows, Linux and macOS.

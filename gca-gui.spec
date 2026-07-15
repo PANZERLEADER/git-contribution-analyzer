@@ -1,7 +1,13 @@
+# ruff: noqa: F821
 import sys
+import tomllib
+from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
+PROJECT_VERSION = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"][
+    "version"
+]
 
 datas = collect_data_files("git_contribution_analyzer", include_py_files=True)
 hiddenimports = (
@@ -72,7 +78,7 @@ if sys.platform == "darwin":
         name="gca-gui.app",
         icon=None,
         bundle_identifier="io.github.panzerleader.gca",
-        version="0.4.0",
+        version=PROJECT_VERSION,
         info_plist={"NSHighResolutionCapable": True},
     )
 else:

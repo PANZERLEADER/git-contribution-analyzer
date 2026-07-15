@@ -19,7 +19,9 @@ def test_should_ship_required_release_documentation() -> None:
         "doc/releases/0.2.0.md",
         "doc/releases/0.3.0.md",
         "doc/releases/0.4.0.md",
+        "doc/releases/0.4.1.md",
         "doc/zh-CN/release-0.4.0.md",
+        "doc/zh-CN/release-0.4.1.md",
         "THIRD_PARTY_NOTICES.md",
     )
 
@@ -86,12 +88,25 @@ def test_should_define_standalone_release_workflow() -> None:
     assert "libegl1" in workflow
 
 
+def test_should_keep_cli_standalone_free_of_gui_runtime() -> None:
+    spec = (ROOT / "gca.spec").read_text(encoding="utf-8")
+    verifier = (ROOT / "scripts/verify_standalone.py").read_text(encoding="utf-8")
+
+    assert "is_core_module" in spec
+    assert '"PySide6"' in spec
+    assert '"shiboken6"' in spec
+    assert "CArchiveReader" in verifier
+    assert '("PySide6", "shiboken6")' in verifier
+    assert "PROJECT_VERSION" in (ROOT / "gca-gui.spec").read_text(encoding="utf-8")
+
+
 def test_should_record_current_release_in_changelog() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
     assert "## 0.2.0 - 2026-07-15" in changelog
     assert "## 0.3.0 - 2026-07-15" in changelog
     assert "## 0.4.0 - 2026-07-15" in changelog
+    assert "## 0.4.1 - 2026-07-15" in changelog
 
 
 def test_should_not_publish_real_identity_or_machine_paths_in_documentation() -> None:

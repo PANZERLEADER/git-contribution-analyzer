@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from PyInstaller.archive.readers import CArchiveReader
+
 ROOT = Path(__file__).parents[1]
 
 
@@ -12,11 +14,23 @@ def _run(arguments: list[str], *, cwd: Path | None = None) -> None:
     subprocess.run(arguments, cwd=cwd, check=True)
 
 
+def _verify_core_archive(executable: Path) -> None:
+    archive = CArchiveReader(str(executable))
+    forbidden_prefixes = ("PySide6", "shiboken6")
+    bundled_gui_entries = sorted(
+        name for name in archive.toc if name.startswith(forbidden_prefixes)
+    )
+    if bundled_gui_entries:
+        preview = ", ".join(bundled_gui_entries[:5])
+        raise SystemExit(f"CLI standalone contains GUI runtime entries: {preview}")
+
+
 def main() -> None:
     suffix = ".exe" if os.name == "nt" else ""
     executable = ROOT / "dist" / f"gca{suffix}"
     if not executable.is_file():
         raise SystemExit(f"Standalone executable not found: {executable}")
+    _verify_core_archive(executable)
     _run([str(executable), "--help"])
     _run([str(executable), "--version"])
 

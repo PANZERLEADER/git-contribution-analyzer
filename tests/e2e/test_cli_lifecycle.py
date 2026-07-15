@@ -30,10 +30,10 @@ def test_should_show_help_and_version() -> None:
     locked_project = next(
         package for package in lock["package"] if package["name"] == "git-contribution-analyzer"
     )
-    assert version_result.stdout.strip() == "0.4.0"
-    assert metadata["project"]["version"] == "0.4.0"
-    assert locked_project["version"] == "0.4.0"
-    assert __version__ == "0.4.0"
+    assert version_result.stdout.strip() == "0.4.1"
+    assert metadata["project"]["version"] == "0.4.1"
+    assert locked_project["version"] == "0.4.1"
+    assert __version__ == "0.4.1"
 
 
 def test_should_reject_init_when_path_is_not_repository(tmp_path: Path) -> None:
