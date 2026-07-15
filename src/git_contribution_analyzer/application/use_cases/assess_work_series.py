@@ -12,7 +12,16 @@ from git_contribution_analyzer.adapters.storage.sqlite.analysis import SqliteAna
 from git_contribution_analyzer.adapters.storage.sqlite.database import initialize_database
 from git_contribution_analyzer.adapters.workspace.config import load_config
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
+from git_contribution_analyzer.application.ports.cancellation import (
+    CancellationToken,
+    NeverCancelledToken,
+)
 from git_contribution_analyzer.application.ports.llm import LlmProvider
+from git_contribution_analyzer.application.ports.progress import (
+    NullProgressReporter,
+    ProgressEvent,
+    ProgressReporter,
+)
 from git_contribution_analyzer.application.use_cases.assess_work import (
     assess_work,
     build_assessment_workload_baseline,
@@ -39,7 +48,12 @@ def assess_work_series(
     filters: AnalysisFilters,
     llm_provider: LlmProvider | None = None,
     allow_llm_fallback: bool = True,
+    progress: ProgressReporter | None = None,
+    cancellation: CancellationToken | None = None,
 ) -> dict[str, Any]:
+    active_progress = progress or NullProgressReporter()
+    active_cancellation = cancellation or NeverCancelledToken()
+    active_cancellation.raise_if_cancelled()
     if filters.since is None or filters.until is None:
         raise ValueError("Periodic assessment requires both since and until")
     windows = split_periods(
@@ -67,28 +81,45 @@ def assess_work_series(
         integration_times=integration_times,
         release_times=release_times,
     )
-    child_reports = [
-        assess_work(
-            path,
-            person_selectors=person_selectors,
-            all_people=all_people,
-            exclude_selectors=exclude_selectors,
-            rank_by=rank_by,
-            ranking_config=ranking_config,
-            filters=replace(filters, since=window.since, until=window.until),
-            llm_provider=llm_provider,
-            allow_llm_fallback=allow_llm_fallback,
-            workload_baseline=workload_baseline,
-            integration_times=integration_times,
-            release_times=release_times,
+    series_task_id = str(uuid4())
+    child_reports = []
+    for index, window in enumerate(windows, start=1):
+        active_cancellation.raise_if_cancelled()
+        active_progress.report(
+            ProgressEvent(
+                task_id=series_task_id,
+                operation="assess_series",
+                stage="evaluating_period",
+                repository=repository.root,
+                current=index - 1,
+                total=len(windows),
+                message=f"Evaluating {window.label}",
+                occurred_at=datetime.now(UTC),
+            )
         )
-        for window in windows
-    ]
+        child_reports.append(
+            assess_work(
+                path,
+                person_selectors=person_selectors,
+                all_people=all_people,
+                exclude_selectors=exclude_selectors,
+                rank_by=rank_by,
+                ranking_config=ranking_config,
+                filters=replace(filters, since=window.since, until=window.until),
+                llm_provider=llm_provider,
+                allow_llm_fallback=allow_llm_fallback,
+                workload_baseline=workload_baseline,
+                integration_times=integration_times,
+                release_times=release_times,
+                progress=active_progress,
+                cancellation=active_cancellation,
+            )
+        )
 
     initialize_database(layout.database)
     store = SqliteAnalysisStore(layout.database, str(repository.root))
     started_at = datetime.now(UTC)
-    run_id = str(uuid4())
+    run_id = series_task_id
     summaries = [summarize_assessment(report) for report in child_reports]
     by_comparison_key: dict[tuple[int, int], dict[str, int]] = {}
     serialized_periods = []
@@ -157,6 +188,7 @@ def assess_work_series(
         started_at=started_at,
         run_type=RunType.WORK_ASSESSMENT_SERIES,
     )
+    active_cancellation.raise_if_cancelled()
     completed_at = datetime.now(UTC)
     report["run"]["completedAt"] = completed_at.isoformat()
     store.complete_run(
@@ -164,5 +196,17 @@ def assess_work_series(
         completed_at=completed_at,
         report=report,
         persist_details=False,
+    )
+    active_progress.report(
+        ProgressEvent(
+            task_id=run_id,
+            operation="assess_series",
+            stage="completed",
+            repository=repository.root,
+            current=len(windows),
+            total=len(windows),
+            message="Assessment series completed",
+            occurred_at=completed_at,
+        )
     )
     return report

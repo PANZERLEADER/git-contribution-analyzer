@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-07-15
+
+- Add an optional PySide6/QML desktop application for Windows, Linux and macOS.
+- Add background repository task scheduling, progress, cooperative cancellation and run recovery.
+- Add GUI views for assessments, trends, identities, Evidence, historical comparisons and exports.
+- Share system-time-zone boundary validation between the CLI and GUI application facade.
+- Add GUI PyInstaller artifacts, smoke tests and third-party Qt notices.
+
 ## 0.3.0 - 2026-07-15
 
 - Add calendar week/month/quarter assessment series with persisted child runs, workload and

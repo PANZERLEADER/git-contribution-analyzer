@@ -18,6 +18,9 @@ def test_should_ship_required_release_documentation() -> None:
         "doc/releases/0.1.0.md",
         "doc/releases/0.2.0.md",
         "doc/releases/0.3.0.md",
+        "doc/releases/0.4.0.md",
+        "doc/zh-CN/release-0.4.0.md",
+        "THIRD_PARTY_NOTICES.md",
     )
 
     missing = [path for path in required_documents if not (ROOT / path).is_file()]
@@ -34,7 +37,16 @@ def test_should_enforce_cross_platform_build_and_install_gates() -> None:
     assert "python -m build" in workflow
     assert "python -m coverage report" in workflow
     assert "--include=" in workflow
+    assert "--cov-fail-under=0" in workflow
+    assert (
+        '--omit="src/git_contribution_analyzer/adapters/gui/*,'
+        'src/git_contribution_analyzer/application/facades/*"'
+        in workflow
+    )
     assert "python scripts/verify_wheel.py" in workflow
+    assert "gui:" in workflow
+    assert 'python -m pip install -e ".[dev,gui]"' in workflow
+    assert "tests/e2e/test_gui_smoke.py" in workflow
     assert "gitleaks" in workflow.casefold()
     assert "git --redact --verbose" in workflow
 
@@ -64,6 +76,11 @@ def test_should_define_standalone_release_workflow() -> None:
     assert '--notes-file "$COMBINED_NOTES"' in workflow
     assert "--notes-file doc/releases/0.1.0.md" not in workflow
     assert (ROOT / "gca.spec").is_file()
+    assert (ROOT / "gca-gui.spec").is_file()
+    assert "gca-gui-windows-x86_64.exe" in workflow
+    assert "gca-gui-linux-x86_64" in workflow
+    assert "gca-gui-macos-x86_64.app.zip" in workflow
+    assert "python scripts/verify_gui_standalone.py" in workflow
 
 
 def test_should_record_current_release_in_changelog() -> None:
@@ -71,6 +88,7 @@ def test_should_record_current_release_in_changelog() -> None:
 
     assert "## 0.2.0 - 2026-07-15" in changelog
     assert "## 0.3.0 - 2026-07-15" in changelog
+    assert "## 0.4.0 - 2026-07-15" in changelog
 
 
 def test_should_not_publish_real_identity_or_machine_paths_in_documentation() -> None:

@@ -2,12 +2,12 @@
 
 [简体中文](README.zh-CN.md)
 
-`gca` is a CLI-first tool for evidence-backed Git contribution analysis. It separates
-deterministic repository facts from rule-based and LLM-assisted interpretation.
+GCA is a local, evidence-backed Git contribution analysis tool with a stable `gca` CLI and an
+optional cross-platform `gca-gui` desktop application. It separates deterministic repository facts
+from rule-based and LLM-assisted interpretation.
 
-The 0.3.0 release adds calendar assessment series, period-over-period and year-over-year trends,
-historical run comparison, authored/committed/merged/landed/released time bases, and system-local
-time input semantics to the 0.2.0 team assessment foundation.
+The 0.4.0 release adds a PySide6/QML desktop workbench for repository lifecycle, assessments,
+trends, identities, Evidence, historical comparisons, exports, resumes and Provider health checks.
 
 ## Development
 
@@ -15,6 +15,13 @@ time input semantics to the 0.2.0 team assessment foundation.
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\gca.exe --help
+```
+
+Install and run the optional desktop application:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,gui]"
+.\.venv\Scripts\gca-gui.exe
 ```
 
 ## Current CLI
@@ -260,11 +267,12 @@ remains readable during 1.x but is deprecated; new integrations should use `gca 
 - [Assessment and resume methodology](doc/guides/methodology.md)
 - [Privacy and provider data boundaries](doc/guides/privacy.md)
 - [Golden dataset](doc/testing/golden-dataset.md)
+- [0.4.0 release](doc/releases/0.4.0.md)
 - [0.3.0 release](doc/releases/0.3.0.md)
 - [0.2.0 release](doc/releases/0.2.0.md)
 - [0.1.0 release](doc/releases/0.1.0.md)
 - [Performance baseline](doc/reports/performance-baseline.md)
 - [Security and privacy audit](doc/reports/security-privacy-audit.md)
 
-Release CI builds wheel/sdist and standalone artifacts on Windows, Linux, and macOS. The ordinary
-CI matrix also performs an isolated wheel installation and a repository lifecycle smoke test.
+Release CI builds wheel/sdist, CLI standalone and GUI standalone artifacts on Windows, Linux and
+macOS. The ordinary CI matrix also performs isolated wheel and repository lifecycle smoke tests.

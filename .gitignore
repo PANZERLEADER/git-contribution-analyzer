@@ -12,6 +12,7 @@ dist/
 build/
 *.spec
 !gca.spec
+!gca-gui.spec
 .env
 .env.*
 !.env.example

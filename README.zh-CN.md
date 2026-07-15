@@ -2,11 +2,11 @@
 
 [English](README.md)
 
-`gca` 是一个以 CLI 为主要入口、以证据为基础的 Git 贡献分析工具。它将可重复验证的
-Git 仓库事实，与确定性规则、LLM 辅助解释严格分离。
+GCA 是一个在本地运行、以证据为基础的 Git 贡献分析工具，同时提供稳定的 `gca` CLI 和可选的
+跨平台 `gca-gui` 桌面应用。它将可重复验证的 Git 仓库事实，与确定性规则、LLM 辅助解释严格分离。
 
-GCA 0.3.0 在团队评估基础上增加自然周/月/季度序列、环比/同比、历史 run 对比、五种 Git 时间
-口径，以及按系统本地时区解释无偏移时间输入：
+GCA 0.4.0 新增 PySide6/QML 桌面工作台，覆盖仓库生命周期、评估、趋势、身份、Evidence、历史
+对比、导出、简历和 Provider 健康检查：
 
 - 工作评估：分析已完成工作、工作规模、工程难度、技术维度和业务维度。
 - 简历生成：基于已确认人员的贡献证据，生成可人工审核的简历候选内容。
@@ -22,6 +22,13 @@ GCA 不根据提交数或代码行数推断员工价值、工时、绩效等级�
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\gca.exe --help
+```
+
+安装并启动可选桌面应用：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,gui]"
+.\.venv\Scripts\gca-gui.exe
 ```
 
 也可以从 [v0.3.0 Release](https://github.com/PANZERLEADER/git-contribution-analyzer/releases/tag/v0.3.0)
@@ -229,6 +236,7 @@ delivery 的 dense ranking；只有提供 `--ranking-config` YAML 时才生成 c
 - [隐私与数据边界](doc/zh-CN/privacy.md)
 - [LLM Provider 指南](doc/zh-CN/provider-guide.md)
 - [黄金数据集](doc/zh-CN/golden-dataset.md)
+- [0.4.0 发布说明](doc/zh-CN/release-0.4.0.md)
 - [0.3.0 发布说明](doc/zh-CN/release-0.3.0.md)
 - [0.2.0 发布说明](doc/zh-CN/release-0.2.0.md)
 - [0.1.0 发布说明](doc/zh-CN/release-0.1.0.md)

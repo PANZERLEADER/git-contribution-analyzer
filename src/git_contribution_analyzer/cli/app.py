@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, time
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
 import typer
 
@@ -10,13 +9,16 @@ from git_contribution_analyzer import __version__
 from git_contribution_analyzer.adapters.git.repository_discovery import discover_repository
 from git_contribution_analyzer.adapters.llm.registry import (
     build_provider,
-    provider_descriptors,
 )
 from git_contribution_analyzer.adapters.outcomes.yaml_loader import load_verified_outcomes
 from git_contribution_analyzer.adapters.workspace.config import load_config
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
 from git_contribution_analyzer.adapters.workspace.ranking_config import load_ranking_config
 from git_contribution_analyzer.application.dto.results import CommandEnvelope
+from git_contribution_analyzer.application.services.time_boundaries import (
+    parse_boundaries,
+    uses_system_timezone,
+)
 from git_contribution_analyzer.application.use_cases.analyze_contributions import (
     analyze_contributions,
 )
@@ -26,6 +28,7 @@ from git_contribution_analyzer.application.use_cases.assess_work_series import a
 from git_contribution_analyzer.application.use_cases.compare_assessment_runs import (
     compare_assessment_runs,
 )
+from git_contribution_analyzer.application.use_cases.export_report import export_report
 from git_contribution_analyzer.application.use_cases.generate_report import generate_report
 from git_contribution_analyzer.application.use_cases.generate_resume import generate_resume
 from git_contribution_analyzer.application.use_cases.get_run import get_run
@@ -33,6 +36,9 @@ from git_contribution_analyzer.application.use_cases.get_status import get_statu
 from git_contribution_analyzer.application.use_cases.index_repository import index_repository
 from git_contribution_analyzer.application.use_cases.init_project import init_project
 from git_contribution_analyzer.application.use_cases.list_identities import list_identities
+from git_contribution_analyzer.application.use_cases.list_providers import (
+    list_providers as list_provider_status,
+)
 from git_contribution_analyzer.application.use_cases.list_runs import list_runs
 from git_contribution_analyzer.application.use_cases.manage_identity_merges import (
     list_identity_merges,
@@ -42,6 +48,7 @@ from git_contribution_analyzer.application.use_cases.manage_identity_merges impo
 )
 from git_contribution_analyzer.application.use_cases.map_identity import map_identity
 from git_contribution_analyzer.application.use_cases.run_doctor import run_doctor
+from git_contribution_analyzer.application.use_cases.test_provider import test_provider
 from git_contribution_analyzer.application.use_cases.uninit_project import uninit_project
 from git_contribution_analyzer.cli.exit_codes import ExitCode
 from git_contribution_analyzer.cli.output import emit_human, emit_json
@@ -122,9 +129,7 @@ def init_command(
 @app.command("status")
 def status_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Show repository and workspace status."""
     try:
@@ -160,9 +165,7 @@ def _run_index_command(path: Path, *, full_rebuild: bool, json_output: bool) -> 
 @app.command("index")
 def index_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Rebuild the Git history index from configured refs."""
     _run_index_command(path, full_rebuild=True, json_output=json_output)
@@ -171,9 +174,7 @@ def index_command(
 @app.command("sync")
 def sync_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Incrementally synchronize new commits and changed refs."""
     _run_index_command(path, full_rebuild=False, json_output=json_output)
@@ -205,9 +206,7 @@ def analyze_command(
     no_llm: Annotated[
         bool, typer.Option("--no-llm", help="Disable semantic LLM analysis.")
     ] = False,
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Analyze deterministic Git contribution evidence for one or all people."""
     if person and all_people:
@@ -351,9 +350,7 @@ def assess_command(
         active_ranking_config = (
             load_ranking_config(ranking_config) if ranking_config is not None else None
         )
-        provider = (
-            build_provider(config.llm) if config.llm.enabled and not no_llm else None
-        )
+        provider = build_provider(config.llm) if config.llm.enabled and not no_llm else None
         parsed_since, parsed_until = _parse_boundaries(since, until)
         filters = AnalysisFilters(
             since=parsed_since,
@@ -397,9 +394,7 @@ def assess_command(
         emit_json(CommandEnvelope(command="assess", data=report, warnings=report["warnings"]))
         return
     if report["reportType"] == "WORK_ASSESSMENT_SERIES":
-        emit_human(
-            f"Assessment series {report['run']['id']}: {len(report['periods'])} periods"
-        )
+        emit_human(f"Assessment series {report['run']['id']}: {len(report['periods'])} periods")
         return
     workload = report["workloadSummary"]
     emit_human(
@@ -437,9 +432,7 @@ def resume_command(
     try:
         repository = discover_repository(path)
         config = load_config(WorkspaceLayout.for_repository(repository.root).config)
-        provider = (
-            build_provider(config.llm) if config.llm.enabled and not no_llm else None
-        )
+        provider = build_provider(config.llm) if config.llm.enabled and not no_llm else None
         outcomes = (
             load_verified_outcomes(verified_outcomes) if verified_outcomes is not None else ()
         )
@@ -470,45 +463,21 @@ def resume_command(
     if json_output:
         emit_json(CommandEnvelope(command="resume", data=report, warnings=report["warnings"]))
         return
-    emit_human(
-        f"Resume run {report['run']['id']}: {len(report['experienceBullets'])} candidates"
-    )
-
-
-
-def _parse_boundary(value: str | None, *, end_of_day: bool) -> datetime | None:
-    if value is None:
-        return None
-    try:
-        parsed = datetime.fromisoformat(value)
-    except ValueError as exc:
-        raise typer.BadParameter(f"Invalid ISO date/time: {value}") from exc
-    if parsed.tzinfo is None:
-        if "T" not in value and end_of_day:
-            parsed = datetime.combine(parsed.date(), time.max)
-        parsed = _localize_system_time(parsed)
-    return parsed
-
-
-def _localize_system_time(value: datetime) -> datetime:
-    return value.astimezone()
+    emit_human(f"Resume run {report['run']['id']}: {len(report['experienceBullets'])} candidates")
 
 
 def _uses_system_timezone(*values: str | None) -> bool:
-    supplied = tuple(value for value in values if value is not None)
-    return bool(supplied) and all(
-        datetime.fromisoformat(value).tzinfo is None for value in supplied
-    )
+    return uses_system_timezone(*values)
 
 
-def _parse_boundaries(
-    since: str | None, until: str | None
-) -> tuple[datetime | None, datetime | None]:
-    parsed_since = _parse_boundary(since, end_of_day=False)
-    parsed_until = _parse_boundary(until, end_of_day=True)
-    if parsed_since is not None and parsed_until is not None and parsed_since > parsed_until:
-        raise typer.BadParameter("--since must be earlier than or equal to --until")
-    return parsed_since, parsed_until
+def _parse_boundaries(since: str | None, until: str | None):  # type: ignore[no-untyped-def]
+    try:
+        return parse_boundaries(since, until)
+    except ValueError as exc:
+        message = str(exc)
+        if message.startswith("since"):
+            message = "--since must be earlier than or equal to --until"
+        raise typer.BadParameter(message) from exc
 
 
 @identities_app.command("list")
@@ -517,9 +486,7 @@ def identities_list_command(
     unresolved: Annotated[
         bool, typer.Option("--unresolved", help="Show only unresolved persons.")
     ] = False,
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """List normalized persons and their Git aliases."""
     try:
@@ -545,15 +512,11 @@ def identities_map_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
     name: Annotated[str, typer.Option("--name", help="Existing Git author name.")] = "",
     email: Annotated[str, typer.Option("--email", help="Existing Git author email.")] = "",
-    person_name: Annotated[
-        str, typer.Option("--person-name", help="Canonical person name.")
-    ] = "",
+    person_name: Annotated[str, typer.Option("--person-name", help="Canonical person name.")] = "",
     person_email: Annotated[
         str, typer.Option("--person-email", help="Canonical person email.")
     ] = "",
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Confirm an alias mapping to a canonical person."""
     if not all((name, email, person_name, person_email)):
@@ -610,17 +573,14 @@ def identities_merge_command(
         return
     action = "preview" if dry_run else f"merge {data['mergeId']}"
     emit_human(
-        f"Identity {action}: {len(data['sources'])} source person(s) -> "
-        f"{data['target']['name']}"
+        f"Identity {action}: {len(data['sources'])} source person(s) -> {data['target']['name']}"
     )
 
 
 @identities_app.command("merges")
 def identities_merges_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    status: Annotated[
-        str, typer.Option("--status", help="ACTIVE, REVERTED, or ALL.")
-    ] = "ALL",
+    status: Annotated[str, typer.Option("--status", help="ACTIVE, REVERTED, or ALL.")] = "ALL",
     json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """List reversible identity merge events."""
@@ -636,9 +596,7 @@ def identities_merges_command(
         emit_json(CommandEnvelope(command="identities.merges", data=data))
         return
     for event in data["merges"]:
-        emit_human(
-            f"{event['mergeId']} [{event['status']}] -> {event['targetPersonId']}"
-        )
+        emit_human(f"{event['mergeId']} [{event['status']}] -> {event['targetPersonId']}")
 
 
 @identities_app.command("unmerge")
@@ -665,9 +623,7 @@ def identities_unmerge_command(
 @runs_app.command("list")
 def runs_list_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """List persisted analysis runs."""
     try:
@@ -679,9 +635,7 @@ def runs_list_command(
         emit_json(CommandEnvelope(command="runs.list", data=data))
         return
     for run in data["runs"]:
-        emit_human(
-            f"{run['id']} [{run['runType']}/{run['status']}] {run['startedAt']}"
-        )
+        emit_human(f"{run['id']} [{run['runType']}/{run['status']}] {run['startedAt']}")
 
 
 @runs_app.command("compare")
@@ -711,9 +665,7 @@ def runs_compare_command(
 def runs_show_command(
     run_id: Annotated[str, typer.Argument(help="Analysis run ID or 'latest'.")],
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Show a persisted completed analysis run."""
     try:
@@ -739,35 +691,18 @@ def runs_show_command(
 @providers_app.command("list")
 def providers_list_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """List built-in providers and the repository's selected provider."""
     try:
-        repository = discover_repository(path)
-        config = load_config(WorkspaceLayout.for_repository(repository.root).config)
+        data = list_provider_status(path)
     except Exception as exc:
         _exit_for_error(exc)
         return
-    providers: list[dict[str, Any]] = [
-        {
-            "id": descriptor.provider_id,
-            "localExecution": descriptor.local_execution,
-            "requiresApiKey": descriptor.requires_api_key,
-            "selected": descriptor.provider_id == config.llm.provider,
-        }
-        for descriptor in provider_descriptors()
-    ]
-    data = {
-        "selected": config.llm.provider,
-        "enabled": config.llm.enabled,
-        "providers": providers,
-    }
     if json_output:
         emit_json(CommandEnvelope(command="providers.list", data=data))
         return
-    for provider in providers:
+    for provider in data["providers"]:
         marker = "selected" if provider["selected"] else "available"
         locality = "local" if provider["localExecution"] else "remote"
         emit_human(f"{provider['id']} [{marker}, {locality}]")
@@ -776,29 +711,19 @@ def providers_list_command(
 @providers_app.command("test")
 def providers_test_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Test the selected provider's configuration and health endpoint."""
     try:
-        repository = discover_repository(path)
-        config = load_config(WorkspaceLayout.for_repository(repository.root).config)
-        provider = build_provider(config.llm)
-        healthy = provider.health_check()
+        data = test_provider(path)
     except Exception as exc:
         _exit_for_error(exc)
         return
-    data = {
-        "provider": provider.provider_id,
-        "model": provider.model,
-        "healthy": healthy,
-        "localExecution": provider.capabilities.local_execution,
-    }
+    healthy = bool(data["healthy"])
     if json_output:
         emit_json(CommandEnvelope(command="providers.test", data=data, success=healthy))
     else:
-        emit_human(f"Provider {provider.provider_id}: {'healthy' if healthy else 'unhealthy'}")
+        emit_human(f"Provider {data['provider']}: {'healthy' if healthy else 'unhealthy'}")
     if not healthy:
         raise typer.Exit(code=ExitCode.PROVIDER_ERROR)
 
@@ -819,15 +744,18 @@ def report_command(
 ) -> None:
     """Rebuild a Markdown, JSON, or CSV report from a persisted analysis run."""
     try:
-        rendered = generate_report(
-            path, run_id, report_format, include_email=include_email
-        )
         if output is not None:
-            output.parent.mkdir(parents=True, exist_ok=True)
-            newline = "" if report_format.casefold() == "csv" else "\n"
-            output.write_text(rendered, encoding="utf-8", newline=newline)
-            emit_human(f"Report written: {output.resolve()}")
+            exported = export_report(
+                path,
+                run_id,
+                report_format,
+                output,
+                include_email=include_email,
+                overwrite=True,
+            )
+            emit_human(f"Report written: {exported}")
             return
+        rendered = generate_report(path, run_id, report_format, include_email=include_email)
     except Exception as exc:
         _exit_for_error(exc)
         return
@@ -837,9 +765,7 @@ def report_command(
 @app.command("doctor")
 def doctor_command(
     path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Output versioned JSON.")
-    ] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
 ) -> None:
     """Diagnose Git, workspace, database, and lock health."""
     try:

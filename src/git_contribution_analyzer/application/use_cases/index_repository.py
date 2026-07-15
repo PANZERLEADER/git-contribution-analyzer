@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from git_contribution_analyzer.adapters.git.native_git import NativeGitHistory
 from git_contribution_analyzer.adapters.git.repository_discovery import discover_repository
@@ -11,12 +12,31 @@ from git_contribution_analyzer.adapters.storage.sqlite.git_index import SqliteGi
 from git_contribution_analyzer.adapters.workspace.config import load_config
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
 from git_contribution_analyzer.adapters.workspace.locks import workspace_lock
+from git_contribution_analyzer.application.ports.cancellation import (
+    CancellationToken,
+    NeverCancelledToken,
+)
+from git_contribution_analyzer.application.ports.progress import (
+    NullProgressReporter,
+    ProgressEvent,
+    ProgressReporter,
+)
 from git_contribution_analyzer.domain.errors import WorkspaceError
 from git_contribution_analyzer.domain.models.git_history import CommitDelivery, GitCommit
 
 
-def index_repository(path: Path, *, full_rebuild: bool) -> dict[str, Any]:
+def index_repository(
+    path: Path,
+    *,
+    full_rebuild: bool,
+    progress: ProgressReporter | None = None,
+    cancellation: CancellationToken | None = None,
+) -> dict[str, Any]:
+    active_progress = progress or NullProgressReporter()
+    active_cancellation = cancellation or NeverCancelledToken()
+    active_cancellation.raise_if_cancelled()
     repository = discover_repository(path)
+    task_id = str(uuid4())
     layout = WorkspaceLayout.for_repository(repository.root)
     if not layout.root.is_dir():
         raise WorkspaceError("GCA workspace is not initialized; run 'gca init' first")
@@ -25,15 +45,32 @@ def index_repository(path: Path, *, full_rebuild: bool) -> dict[str, Any]:
     store = SqliteGitIndexStore(layout.database, str(repository.root))
 
     with workspace_lock(layout.locks / "workspace.lock"):
+        active_cancellation.raise_if_cancelled()
+        active_progress.report(
+            _event(task_id, repository.root, "reading_commits", "Reading Git commits")
+        )
         all_hashes = history.list_commit_hashes()
         existing = set() if full_rebuild else store.existing_commit_hashes()
         new_hashes = tuple(commit_hash for commit_hash in all_hashes if commit_hash not in existing)
         new_commits = history.read_commits(new_hashes)
 
+        active_cancellation.raise_if_cancelled()
+        active_progress.report(
+            _event(
+                task_id,
+                repository.root,
+                "resolving_delivery",
+                "Resolving delivery status",
+            )
+        )
         existing_relations = [] if full_rebuild else store.relation_summaries()
         relation_rows = existing_relations + [_relation_row(commit) for commit in new_commits]
         deliveries = _resolve_delivery(history, relation_rows, config.default_branch)
         git_refs = history.list_refs()
+        active_cancellation.raise_if_cancelled()
+        active_progress.report(
+            _event(task_id, repository.root, "writing_index", "Writing repository index")
+        )
         store.write_index(
             git_refs,
             new_commits,
@@ -43,12 +80,36 @@ def index_repository(path: Path, *, full_rebuild: bool) -> dict[str, Any]:
         stats = store.stats()
         _update_metadata(layout, stats, git_refs, config.default_branch)
 
-    return {
+    result = {
         **stats,
         "newCommits": len(new_commits),
         "targetRef": f"refs/heads/{config.default_branch}",
         "indexStatus": "up-to-date",
     }
+    active_progress.report(
+        ProgressEvent(
+            task_id=task_id,
+            operation="index" if full_rebuild else "sync",
+            stage="completed",
+            repository=repository.root,
+            current=1,
+            total=1,
+            message="Repository index updated",
+            occurred_at=datetime.now(UTC),
+        )
+    )
+    return result
+
+
+def _event(task_id: str, repository: Path, stage: str, message: str) -> ProgressEvent:
+    return ProgressEvent(
+        task_id=task_id,
+        operation="index",
+        stage=stage,
+        repository=repository,
+        message=message,
+        occurred_at=datetime.now(UTC),
+    )
 
 
 def _relation_row(commit: GitCommit) -> dict[str, Any]:

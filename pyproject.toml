@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "git-contribution-analyzer"
-version = "0.3.0"
+version = "0.4.0"
 description = "Evidence-backed Git contribution analysis with pluggable LLM providers."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,6 +15,9 @@ authors = [
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
+  "Environment :: MacOS X",
+  "Environment :: Win32 (MS Windows)",
+  "Environment :: X11 Applications :: Qt",
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
@@ -48,9 +51,13 @@ dev = [
 release = [
   "pyinstaller>=6.11,<7",
 ]
+gui = [
+  "PySide6>=6.8,<7",
+]
 
 [project.scripts]
 gca = "git_contribution_analyzer.cli.app:main"
+gca-gui = "git_contribution_analyzer.adapters.gui.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/git_contribution_analyzer"]

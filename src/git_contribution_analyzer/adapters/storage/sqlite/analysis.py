@@ -486,6 +486,43 @@ class SqliteAnalysisStore:
         finally:
             engine.dispose()
 
+    def cancel_run(self, run_id: str, completed_at: datetime) -> None:
+        engine = create_database_engine(self.database_path)
+        try:
+            with engine.begin() as connection:
+                connection.execute(
+                    update(analysis_runs)
+                    .where(analysis_runs.c.id == run_id)
+                    .values(
+                        status="CANCELLED",
+                        completed_at=completed_at,
+                        error_message="Operation cancelled",
+                    )
+                )
+        finally:
+            engine.dispose()
+
+    def fail_running_runs(self, completed_at: datetime, message: str) -> int:
+        engine = create_database_engine(self.database_path)
+        try:
+            with engine.begin() as connection:
+                repository = self._repository(connection)
+                result = connection.execute(
+                    update(analysis_runs)
+                    .where(
+                        analysis_runs.c.repository_id == repository["id"],
+                        analysis_runs.c.status == "RUNNING",
+                    )
+                    .values(
+                        status="FAILED",
+                        completed_at=completed_at,
+                        error_message=message,
+                    )
+                )
+                return int(result.rowcount or 0)
+        finally:
+            engine.dispose()
+
     def _insert_report_rows(
         self, connection: Connection, run_id: str, report: dict[str, Any]
     ) -> None:

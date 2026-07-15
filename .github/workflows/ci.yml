@@ -24,13 +24,22 @@ jobs:
       - name: Lint
         run: python -m ruff check .
       - name: Type check
-        run: python -m mypy src
+        run: python -m mypy src --exclude "adapters[/\\]gui"
       - name: Test with coverage
-        run: python -m pytest --cov=git_contribution_analyzer --cov-report=term-missing
-      - name: Enforce core coverage
+        run: >-
+          python -m pytest --ignore-glob="*gui*"
+          --cov=git_contribution_analyzer --cov-report=term-missing
+          --cov-fail-under=0
+      - name: Enforce total core coverage
+        run: >-
+          python -m coverage report
+          --omit="src/git_contribution_analyzer/adapters/gui/*,src/git_contribution_analyzer/application/facades/*"
+          --fail-under=80
+      - name: Enforce application and domain coverage
         run: >-
           python -m coverage report
           --include="src/git_contribution_analyzer/application/*,src/git_contribution_analyzer/domain/*"
+          --omit="src/git_contribution_analyzer/application/facades/*"
           --fail-under=90
       - name: Build package
         run: python -m build
@@ -38,6 +47,35 @@ jobs:
         run: python scripts/verify_wheel.py
       - name: CLI smoke test
         run: gca --help
+
+  gui:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_QUICK_BACKEND: software
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install GUI dependencies
+        run: python -m pip install -e ".[dev,gui]"
+      - name: Lint
+        run: python -m ruff check .
+      - name: Type check
+        run: python -m mypy src
+      - name: Run GUI tests
+        run: python -m pytest -k gui
+      - name: GUI entrypoint smoke
+        run: python -m pytest tests/e2e/test_gui_smoke.py
+      - name: GUI version
+        run: gca-gui --version
 
   secrets:
     runs-on: ubuntu-latest

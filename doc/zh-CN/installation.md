@@ -18,12 +18,21 @@ python -m venv .venv
 
 Linux/macOS 使用 `.venv/bin/python` 和 `.venv/bin/gca`。
 
+安装可选桌面应用：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,gui]"
+.\.venv\Scripts\gca-gui.exe
+```
+
+普通 core wheel 不安装 Qt。需要桌面界面时使用 `[gui]` extra 或 `gca-gui-*` 发布制品。
+
 ## Wheel 或 pipx
 
 ```powershell
 python -m build
-python -m pip install dist/git_contribution_analyzer-0.3.0-py3-none-any.whl
-pipx install dist/git_contribution_analyzer-0.3.0-py3-none-any.whl
+python -m pip install dist/git_contribution_analyzer-0.4.0-py3-none-any.whl
+pipx install dist/git_contribution_analyzer-0.4.0-py3-none-any.whl
 gca --version
 ```
 
@@ -45,6 +54,9 @@ gca doctor D:\path\to\repository --json
 ```
 
 Windows 可执行文件不需要放宽 PowerShell 脚本执行策略。
+
+GUI 制品命名为 `gca-gui-windows-x86_64.exe`、`gca-gui-linux-x86_64` 和
+`gca-gui-macos-x86_64.app.zip`；macOS 压缩包内是应用 bundle。
 
 ## 升级
 

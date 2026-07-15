@@ -18,12 +18,22 @@ python -m venv .venv
 
 On Linux/macOS, use `.venv/bin/python` and `.venv/bin/gca`.
 
+For the optional desktop application:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -e ".[dev,gui]"
+.\.venv\Scripts\gca-gui.exe
+```
+
+The ordinary core wheel does not install Qt. Use the `[gui]` extra or a `gca-gui-*` release
+artifact when a desktop interface is required.
+
 ## Wheel Or pipx
 
 ```powershell
 python -m build
-python -m pip install dist/git_contribution_analyzer-0.3.0-py3-none-any.whl
-pipx install dist/git_contribution_analyzer-0.3.0-py3-none-any.whl
+python -m pip install dist/git_contribution_analyzer-0.4.0-py3-none-any.whl
+pipx install dist/git_contribution_analyzer-0.4.0-py3-none-any.whl
 gca --version
 ```
 
@@ -39,6 +49,9 @@ gca doctor D:\path\to\repository --json
 ```
 
 The Windows executable does not require a PowerShell script execution policy exception.
+
+GUI release artifacts are named `gca-gui-windows-x86_64.exe`, `gca-gui-linux-x86_64` and
+`gca-gui-macos-x86_64.app.zip`. The macOS archive contains an application bundle.
 
 ## Upgrade
 

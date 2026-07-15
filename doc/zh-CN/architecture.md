@@ -11,7 +11,7 @@ GCA 是一个以 CLI 为入口、在本地运行的 Git 分析工具。确定性
 ## 分层
 
 ```text
-CLI
+CLI / PySide6-QML GUI
   -> Application 用例
       -> Domain 模型和确定性规则
           -> Application Ports
@@ -22,8 +22,18 @@ CLI
 - `application`：用例、EvidenceSnapshot、Provider task 和与仓库实现无关的 ports。
 - `adapters`：Native Git/PyDriller、SQLite、LLM Provider、YAML outcome 和报告渲染器。
 - `cli`：Typer 命令、带版本输出 envelope 和稳定退出码映射。
+- `adapters/gui`：Qt controller、table model、按仓库调度的后台任务和 QML 资源。GUI 调用
+  application facade，不解析 CLI 输出，也不直接查询 SQLite。
 
 依赖方向必须向内。Domain 代码不能依赖 CLI、SQLite、HTTP 或命令行 Provider。
+Application 和 Domain 不能依赖 PySide6。GUI 与 CLI 共用系统时区时间边界校验、Provider use case、
+报告 renderer 和持久化 run 契约。
+
+## 桌面任务边界
+
+GUI 会串行执行同一仓库的任务，不同仓库可以使用 Qt 线程池并行。Application progress event 通过
+Qt signal 跨越 Adapter 边界。取消是协作式的，只在事务安全点生效；Qt worker thread 不会被强制
+终止。仓库本地 `workspace_lock` 仍是 CLI 和 GUI 进程的最终写入保护。
 
 ## 分析流水线
 

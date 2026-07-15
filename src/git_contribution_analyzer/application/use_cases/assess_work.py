@@ -16,7 +16,17 @@ from git_contribution_analyzer.adapters.storage.sqlite.llm_audit import SqliteLl
 from git_contribution_analyzer.adapters.workspace.config import load_config
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
 from git_contribution_analyzer.adapters.workspace.locks import workspace_lock
+from git_contribution_analyzer.application.ports.cancellation import (
+    CancellationToken,
+    NeverCancelledToken,
+    OperationCancelled,
+)
 from git_contribution_analyzer.application.ports.llm import LlmProvider
+from git_contribution_analyzer.application.ports.progress import (
+    NullProgressReporter,
+    ProgressEvent,
+    ProgressReporter,
+)
 from git_contribution_analyzer.application.services.assessment_explanation import (
     explain_assessment,
 )
@@ -68,7 +78,12 @@ def assess_work(
     workload_baseline: WorkloadBaseline | None = None,
     integration_times: dict[str, tuple[datetime, datetime | None]] | None = None,
     release_times: dict[str, datetime] | None = None,
+    progress: ProgressReporter | None = None,
+    cancellation: CancellationToken | None = None,
 ) -> dict[str, Any]:
+    active_progress = progress or NullProgressReporter()
+    active_cancellation = cancellation or NeverCancelledToken()
+    active_cancellation.raise_if_cancelled()
     repository = discover_repository(path)
     layout = WorkspaceLayout.for_repository(repository.root)
     initialize_database(layout.database)
@@ -80,6 +95,16 @@ def assess_work(
     next_id = id_generator or (lambda: str(uuid4()))
     run_id = next_id()
     started_at = now()
+    active_progress.report(
+        ProgressEvent(
+            task_id=run_id,
+            operation="assess",
+            stage="discovering_repository",
+            repository=repository.root,
+            message="Repository discovered",
+            occurred_at=started_at,
+        )
+    )
     baseline = store.baseline_commit()
     allowed_hashes = _branch_hashes(repository.root, active_filters.branch)
     history = NativeGitHistory(repository.root)
@@ -100,6 +125,17 @@ def assess_work(
     )
 
     with workspace_lock(layout.locks / "workspace.lock"):
+        active_cancellation.raise_if_cancelled()
+        active_progress.report(
+            ProgressEvent(
+                task_id=run_id,
+                operation="assess",
+                stage="selecting_people",
+                repository=repository.root,
+                message="Selecting people",
+                occurred_at=now(),
+            )
+        )
         people, selection = select_people(
             store,
             person_selectors=person_selectors,
@@ -134,9 +170,7 @@ def assess_work(
                 "excludePersons": list(exclude_selectors),
                 "selection": selection.as_dict(),
                 "rankBy": list(rank_by),
-                "rankingConfig": (
-                    ranking_config.as_dict() if ranking_config is not None else None
-                ),
+                "rankingConfig": (ranking_config.as_dict() if ranking_config is not None else None),
                 "filters": active_filters.as_dict(),
                 "llm": llm_provider is not None,
             },
@@ -145,6 +179,17 @@ def assess_work(
             run_type=RunType.WORK_ASSESSMENT,
         )
         try:
+            active_cancellation.raise_if_cancelled()
+            active_progress.report(
+                ProgressEvent(
+                    task_id=run_id,
+                    operation="assess",
+                    stage="building_snapshot",
+                    repository=repository.root,
+                    message="Building assessment",
+                    occurred_at=now(),
+                )
+            )
             report = _build_assessment_report(
                 run_id,
                 started_at,
@@ -157,6 +202,17 @@ def assess_work(
             status = "COMPLETED"
             provider_id = "none"
             if llm_provider is not None:
+                active_cancellation.raise_if_cancelled()
+                active_progress.report(
+                    ProgressEvent(
+                        task_id=run_id,
+                        operation="assess",
+                        stage="calling_provider",
+                        repository=repository.root,
+                        message="Requesting optional explanation",
+                        occurred_at=now(),
+                    )
+                )
                 provider_id = llm_provider.provider_id
                 if not any(subject.evidence for subject in snapshot.subjects):
                     report["warnings"].append(
@@ -169,9 +225,7 @@ def assess_work(
                         run_id=run_id,
                     )
                     try:
-                        enhancement = explain_assessment(
-                            report, snapshot, audited_provider
-                        )
+                        enhancement = explain_assessment(report, snapshot, audited_provider)
                         report["explanation"] = enhancement.explanation
                         report["run"].update(
                             {
@@ -191,6 +245,7 @@ def assess_work(
                         )
                         report["run"]["providerId"] = provider_id
             report["run"]["status"] = status
+            active_cancellation.raise_if_cancelled()
             completed_at = now()
             report["run"]["completedAt"] = completed_at.isoformat()
             store.complete_run(
@@ -201,7 +256,22 @@ def assess_work(
                 provider_id=provider_id,
                 persist_details=False,
             )
+            active_progress.report(
+                ProgressEvent(
+                    task_id=run_id,
+                    operation="assess",
+                    stage="completed",
+                    repository=repository.root,
+                    current=1,
+                    total=1,
+                    message="Assessment completed",
+                    occurred_at=completed_at,
+                )
+            )
             return report
+        except OperationCancelled:
+            store.cancel_run(run_id, now())
+            raise
         except Exception as exc:
             store.fail_run(run_id, now(), str(exc))
             raise
@@ -253,9 +323,7 @@ def _build_assessment_report(
         _serialize_subject(subject, active_workload_baseline) for subject in snapshot.subjects
     ]
     assessments = [
-        assessment
-        for subject in serialized_subjects
-        for assessment in subject["itemAssessments"]
+        assessment for subject in serialized_subjects for assessment in subject["itemAssessments"]
     ]
     completed = [
         assessment
@@ -305,21 +373,17 @@ def _build_assessment_report(
         "workloadSummary": {
             "completedItems": len(completed),
             "pendingItems": sum(
-                entry["completionBucket"] == CompletionBucket.PENDING.value
-                for entry in assessments
+                entry["completionBucket"] == CompletionBucket.PENDING.value for entry in assessments
             ),
             "reworkItems": sum(
-                entry["completionBucket"] == CompletionBucket.REWORK.value
-                for entry in assessments
+                entry["completionBucket"] == CompletionBucket.REWORK.value for entry in assessments
             ),
             "integrationItems": sum(
                 len(subject["integrationWork"]) for subject in serialized_subjects
             ),
             "sizeDistribution": _distribution(completed, "size", "band", SizeBand),
         },
-        "difficultyDistribution": _distribution(
-            completed, "difficulty", "level", DifficultyLevel
-        ),
+        "difficultyDistribution": _distribution(completed, "difficulty", "level", DifficultyLevel),
         "technicalSummary": {
             "headline": (
                 f"Completed work spans {len(modules)} technical modules and "
@@ -461,10 +525,7 @@ def _assess_item(
             ("MIGRATION", any("migration" in path.casefold() for path in paths)),
             (
                 "CONFIGURATION",
-                any(
-                    path.casefold().endswith((".yml", ".yaml", ".toml"))
-                    for path in paths
-                ),
+                any(path.casefold().endswith((".yml", ".yaml", ".toml")) for path in paths),
             ),
         )
         if present
@@ -525,13 +586,9 @@ def _serialize_item_assessment(value: WorkItemAssessment) -> dict[str, Any]:
     }
 
 
-def _ids_for_bucket(
-    assessments: list[WorkItemAssessment], bucket: CompletionBucket
-) -> list[str]:
+def _ids_for_bucket(assessments: list[WorkItemAssessment], bucket: CompletionBucket) -> list[str]:
     return [
-        value.contribution_item_id
-        for value in assessments
-        if value.completion_bucket is bucket
+        value.contribution_item_id for value in assessments if value.completion_bucket is bucket
     ]
 
 

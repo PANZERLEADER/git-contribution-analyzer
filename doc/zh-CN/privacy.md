@@ -11,6 +11,9 @@
 GCA 不会把 API key 写入仓库配置或日志。Provider secret 必须来自环境变量，或来自本机 Provider
 CLI 已有的认证会话。
 
+桌面应用只在操作系统应用设置中保存窗口偏好、主题和最多十个最近仓库路径。GUI settings 不保存
+API key、Provider prompt、报告、Evidence 或源码内容。GCA GUI 不监听 localhost 端口。
+
 ## LLM 上下文
 
 Provider 请求使用经过脱敏和白名单限制的上下文，可以包含：

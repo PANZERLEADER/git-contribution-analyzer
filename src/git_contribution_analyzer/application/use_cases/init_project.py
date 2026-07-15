@@ -17,10 +17,17 @@ from git_contribution_analyzer.adapters.workspace.config import write_default_co
 from git_contribution_analyzer.adapters.workspace.git_exclude import ensure_workspace_excluded
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
 from git_contribution_analyzer.adapters.workspace.locks import workspace_lock
+from git_contribution_analyzer.application.ports.cancellation import CancellationToken
+from git_contribution_analyzer.application.ports.progress import ProgressReporter
 from git_contribution_analyzer.application.use_cases.index_repository import index_repository
 
 
-def init_project(path: Path) -> WorkspaceLayout:
+def init_project(
+    path: Path,
+    *,
+    progress: ProgressReporter | None = None,
+    cancellation: CancellationToken | None = None,
+) -> WorkspaceLayout:
     repository = discover_repository(path)
     layout = WorkspaceLayout.for_repository(repository.root)
     layout.create_directories()
@@ -55,5 +62,10 @@ def init_project(path: Path) -> WorkspaceLayout:
             newline="\n",
         )
         ensure_workspace_excluded(repository.root)
-    index_repository(repository.root, full_rebuild=False)
+    index_repository(
+        repository.root,
+        full_rebuild=False,
+        progress=progress,
+        cancellation=cancellation,
+    )
     return layout

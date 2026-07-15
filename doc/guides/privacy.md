@@ -11,6 +11,11 @@ identity data, derived Evidence and persisted reports. Protect it as internal pr
 GCA does not store API keys in repository configuration or logs. Provider secrets must come from
 environment variables or the provider's existing authenticated CLI session.
 
+The desktop application stores only window preferences, theme selection and up to ten recent
+repository paths in the operating system's application settings. It does not store API keys,
+Provider prompts, reports, Evidence or source file contents in GUI settings. GCA GUI does not open
+a localhost port.
+
 ## LLM Context
 
 Provider requests use a redacted, allowlisted context. They may contain:
