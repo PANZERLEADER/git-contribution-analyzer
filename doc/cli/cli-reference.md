@@ -23,6 +23,28 @@ Unicode are supported when passed as one quoted argument.
 | `gca doctor [PATH] [--json]` | Diagnose Git, workspace, database and lock state |
 | `gca uninit [PATH] [--yes]` | Remove only the repository-local GCA workspace |
 
+`gca status --json` emits `status/v2`, which adds the structural cache summary. The original
+`schemas/status/v1.json` remains unchanged for replay and compatibility checks.
+
+## Structural Observations
+
+```powershell
+gca structural status <repo> --json
+gca structural rebuild <repo> --cutoff 2026-07-01T00:00:00Z `
+  --branch main --scope src --time-strategy dual-window --json
+gca structural show <repo> --baseline <baseline-id> --json
+gca structural prune <repo> --keep 8 --yes --json
+```
+
+`--cutoff` is exclusive; omitting it uses the current instant. `--branch` defaults to the
+repository configuration, `--scope` is an optional path prefix, and `--time-strategy` accepts
+`lifetime`, `rolling-window`, or `dual-window`. When omitted, the command uses `.gca/config.yml`
+(`DUAL_WINDOW` in `community-baseline-v1`). Rebuild publishes only completed immutable baselines.
+Prune requires `--yes` and removes only old rebuildable baseline caches.
+
+The output is repository-level observation data. It does not change work assessment, difficulty,
+ranking or resume results. `status` and `doctor` include cache diagnostics.
+
 ## Identities
 
 ```powershell

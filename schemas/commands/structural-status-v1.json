@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/commands/structural-status-v1.json",
+  "$defs": {
+    "statusData": {
+      "type": "object",
+      "required": [
+        "baselineCount",
+        "latestBaselineId",
+        "processedCommits",
+        "factRuleVersion",
+        "unhealthyBaselines",
+        "orphanBaselines",
+        "buildingBaselines",
+        "failedBaselines",
+        "cancelledBaselines",
+        "staleBaselines",
+        "latestDiagnosticId"
+      ],
+      "properties": {
+        "baselineCount": { "type": "integer", "minimum": 0 },
+        "latestBaselineId": { "type": ["string", "null"] },
+        "processedCommits": { "type": "integer", "minimum": 0 },
+        "factRuleVersion": { "type": "string" },
+        "unhealthyBaselines": { "type": "integer", "minimum": 0 },
+        "orphanBaselines": { "type": "integer", "minimum": 0 },
+        "buildingBaselines": { "type": "integer", "minimum": 0 },
+        "failedBaselines": { "type": "integer", "minimum": 0 },
+        "cancelledBaselines": { "type": "integer", "minimum": 0 },
+        "staleBaselines": { "type": "integer", "minimum": 0 },
+        "latestDiagnosticId": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": ["schemaVersion", "command", "success", "data", "warnings", "error"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "command": { "const": "structural status" },
+    "success": { "const": true },
+    "data": { "$ref": "#/$defs/statusData" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "error": { "type": "null" }
+  },
+  "additionalProperties": false
+}

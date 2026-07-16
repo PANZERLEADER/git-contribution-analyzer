@@ -48,3 +48,10 @@ three dimensions and a weighted composite, and emits aggregate timing only.
 - Compare standalone and wheel startup time on release artifacts.
 
 These items improve optimization evidence but do not change deterministic result correctness.
+
+Structural baseline performance has a separate reproducible harness at
+`scripts/benchmark_structural_baseline.py` and is reported in
+`doc/reports/structural-baseline-performance.md`. The 10k/100k pure-Domain synthetic measurements
+are recorded there. Two small real local samples cover cold persistence, warm lookup and SQLite
+size; controlled incremental and assessment-overhead measurements remain required before any
+scoring use.

@@ -14,6 +14,10 @@ CLI 已有的认证会话。
 桌面应用只在操作系统应用设置中保存窗口偏好、主题和最多十个最近仓库路径。GUI settings 不保存
 API key、Provider prompt、报告、Evidence 或源码内容。GCA GUI 不监听 localhost 端口。
 
+结构观察同样只在本地运行。SQLite 工作区会保存有效 commit hash、规范路径、file/pair occurrence
+和物化 baseline JSON。虽然不保存源码正文，这些数据仍可能暴露仓库拓扑和变更模式。结构命令不会
+调用 Forge API、Hercules 或 LLM Provider。对外分享 baseline JSON 前应审核其中路径。
+
 ## LLM 上下文
 
 Provider 请求使用经过脱敏和白名单限制的上下文，可以包含：
@@ -54,5 +58,6 @@ Verified outcome 文件由人工维护，可能包含敏感业务结果。未经
 
 ## 保留与删除
 
-`gca uninit <repo> --yes` 删除本地工作区。Provider 调用审计只保存 hash、版本、状态和已验证
+`gca structural prune <repo> --keep N --yes` 删除旧的可重建 baseline 聚合，但保留索引事实。
+`gca uninit <repo> --yes` 删除整个本地工作区。Provider 调用审计只保存 hash、版本、状态和已验证
 响应，不保存 API key。组织的数据保留、访问控制和报告授权仍由仓库所有者负责。

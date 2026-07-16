@@ -56,9 +56,9 @@ def test_should_initialize_status_and_uninitialize_repository(git_repo: Path) ->
     status = runner.invoke(app, ["status", str(git_repo), "--json"])
     assert status.exit_code == 0
     payload = json.loads(status.stdout)
-    schema_path = Path(__file__).parents[2] / "schemas" / "status" / "v1.json"
+    schema_path = Path(__file__).parents[2] / "schemas" / "status" / "v2.json"
     validate(payload, json.loads(schema_path.read_text(encoding="utf-8")))
-    assert payload["schemaVersion"] == "1.0"
+    assert payload["schemaVersion"] == "2.0"
     assert payload["command"] == "status"
     assert payload["success"] is True
     assert payload["data"]["repository"] == str(git_repo.resolve())

@@ -22,6 +22,27 @@
 | `gca doctor [PATH] [--json]` | 诊断 Git、工作区、数据库和锁状态 |
 | `gca uninit [PATH] [--yes]` | 只删除仓库本地 GCA 工作区 |
 
+`gca status --json` 当前输出 `status/v2`，新增 structural cache 摘要；原始
+`schemas/status/v1.json` 保持不变，用于历史重放和兼容性检查。
+
+## 结构观察
+
+```powershell
+gca structural status <repo> --json
+gca structural rebuild <repo> --cutoff 2026-07-01T00:00:00Z `
+  --branch main --scope src --time-strategy dual-window --json
+gca structural show <repo> --baseline <baseline-id> --json
+gca structural prune <repo> --keep 8 --yes --json
+```
+
+`--cutoff` 是排他边界；省略时使用当前时刻。`--branch` 默认读取仓库配置，`--scope` 是可选路径
+前缀，`--time-strategy` 可选 `lifetime`、`rolling-window`、`dual-window`；省略时使用
+`.gca/config.yml`（`community-baseline-v1` 默认为 `DUAL_WINDOW`）。Rebuild 只发布完成的不可变
+baseline。Prune 必须带 `--yes`，且只删除旧的可重建 baseline cache。
+
+输出是仓库级 observation 数据，不会改变工作评估、难度、排名或简历结果。`status` 和 `doctor`
+会包含 cache 诊断。
+
 ## 身份
 
 ```powershell

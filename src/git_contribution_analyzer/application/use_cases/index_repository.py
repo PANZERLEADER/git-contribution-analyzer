@@ -9,6 +9,9 @@ from uuid import uuid4
 from git_contribution_analyzer.adapters.git.native_git import NativeGitHistory
 from git_contribution_analyzer.adapters.git.repository_discovery import discover_repository
 from git_contribution_analyzer.adapters.storage.sqlite.git_index import SqliteGitIndexStore
+from git_contribution_analyzer.adapters.storage.sqlite.structural_baseline import (
+    SqliteStructuralBaselineStore,
+)
 from git_contribution_analyzer.adapters.workspace.config import load_config
 from git_contribution_analyzer.adapters.workspace.layout import WorkspaceLayout
 from git_contribution_analyzer.adapters.workspace.locks import workspace_lock
@@ -20,6 +23,9 @@ from git_contribution_analyzer.application.ports.progress import (
     NullProgressReporter,
     ProgressEvent,
     ProgressReporter,
+)
+from git_contribution_analyzer.application.ports.structural_baseline import (
+    StructuralBaselineStore,
 )
 from git_contribution_analyzer.domain.errors import WorkspaceError
 from git_contribution_analyzer.domain.models.git_history import CommitDelivery, GitCommit
@@ -76,7 +82,20 @@ def index_repository(
             new_commits,
             deliveries,
             clear_existing=full_rebuild,
+            default_branch=config.default_branch,
         )
+        structural_store: StructuralBaselineStore = SqliteStructuralBaselineStore(
+            layout.database, str(repository.root)
+        )
+        structural_stats = structural_store.sync_commit_facts(
+            new_commits,
+            clear_existing=full_rebuild,
+        )
+        stale_baselines = _mark_unreachable_structural_baselines(
+            history,
+            structural_store,
+        )
+        structural_stats = {**structural_stats, "staleBaselines": stale_baselines}
         stats = store.stats()
         _update_metadata(layout, stats, git_refs, config.default_branch)
 
@@ -85,6 +104,7 @@ def index_repository(
         "newCommits": len(new_commits),
         "targetRef": f"refs/heads/{config.default_branch}",
         "indexStatus": "up-to-date",
+        "structuralFacts": structural_stats,
     }
     active_progress.report(
         ProgressEvent(
@@ -99,6 +119,29 @@ def index_repository(
         )
     )
     return result
+
+
+def _mark_unreachable_structural_baselines(
+    history: NativeGitHistory,
+    store: StructuralBaselineStore,
+) -> int:
+    stale_ids: list[str] = []
+    reachable_by_branch: dict[str, set[str]] = {}
+    for baseline in store.completed_baseline_refs():
+        baseline_commit = baseline["baselineCommit"]
+        if baseline_commit is None:
+            continue
+        branch = str(baseline["branch"])
+        reachable = reachable_by_branch.get(branch)
+        if reachable is None:
+            try:
+                reachable = set(history.reachable_commits(branch))
+            except WorkspaceError:
+                continue
+            reachable_by_branch[branch] = reachable
+        if baseline_commit not in reachable:
+            stale_ids.append(str(baseline["baselineId"]))
+    return store.mark_stale(stale_ids)
 
 
 def _event(task_id: str, repository: Path, stage: str, message: str) -> ProgressEvent:

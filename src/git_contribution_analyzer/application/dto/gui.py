@@ -69,6 +69,15 @@ class ResumeRequest:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class StructuralBaselineRequest:
+    repository: Path
+    cutoff_text: str | None = None
+    branch: str | None = None
+    scope: str | None = None
+    time_strategy: str = "lifetime"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class GuiError:
     code: str
     title: str

@@ -50,7 +50,7 @@ def test_should_cache_completion_and_audit_cache_hit_without_prompt_content(tmp_
             ).scalar_one()
     finally:
         engine.dispose()
-    assert revision == "0006_identity_merges"
+    assert revision == "0007_structural_baselines"
     assert len(rows) == 2
     assert rows[0]["attempts"] == 1
     assert rows[0]["cache_hit"] is False

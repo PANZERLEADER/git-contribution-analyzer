@@ -18,6 +18,7 @@ from git_contribution_analyzer.application.dto.gui import (
     IdentityMapRequest,
     IdentityMergeRequest,
     ResumeRequest,
+    StructuralBaselineRequest,
 )
 from git_contribution_analyzer.application.facades.gui import GuiApplicationFacade
 from git_contribution_analyzer.application.ports.cancellation import CancellationToken
@@ -33,6 +34,7 @@ class GuiController(QObject):
     taskChanged = Signal()
     errorChanged = Signal()
     resultChanged = Signal()
+    structuralChanged = Signal()
     recentChanged = Signal()
     notification = Signal(str)
 
@@ -109,6 +111,23 @@ class GuiController(QObject):
                 Column("requiresApiKey", "API key"),
             )
         )
+        self._structural_hotspots_model = DictTableModel(
+            columns=(
+                Column("path", "Path"),
+                Column("changeCount", "Changes"),
+                Column("percentile", "Percentile"),
+                Column("confidence", "Confidence"),
+            )
+        )
+        self._structural_couplings_model = DictTableModel(
+            columns=(
+                Column("leftPath", "Left path"),
+                Column("rightPath", "Right path"),
+                Column("coChangeCount", "Co-changes"),
+                Column("jaccard", "Jaccard"),
+                Column("confidence", "Confidence"),
+            )
+        )
 
         self._runner.taskStarted.connect(self._task_started)
         self._runner.taskProgress.connect(self._task_progress)
@@ -155,6 +174,18 @@ class GuiController(QObject):
     @Property(int, notify=statusChanged)
     def unresolvedIdentityCount(self) -> int:
         return int(self._status.get("unresolvedIdentities", 0))
+
+    @Property(int, notify=structuralChanged)
+    def structuralBaselineCount(self) -> int:
+        return int(self._structural_status().get("baselineCount", 0))
+
+    @Property(str, notify=structuralChanged)
+    def structuralLatestBaselineId(self) -> str:
+        return str(self._structural_status().get("latestBaselineId") or "")
+
+    @Property(int, notify=structuralChanged)
+    def structuralProcessedCommits(self) -> int:
+        return int(self._structural_status().get("processedCommits", 0))
 
     @Property(bool, notify=taskChanged)
     def busy(self) -> bool:
@@ -220,6 +251,14 @@ class GuiController(QObject):
     def providersModel(self) -> QObject:
         return self._providers_model
 
+    @Property(QObject, constant=True)
+    def structuralHotspotsModel(self) -> QObject:
+        return self._structural_hotspots_model
+
+    @Property(QObject, constant=True)
+    def structuralCouplingsModel(self) -> QObject:
+        return self._structural_couplings_model
+
     @Slot(str)
     def openRepository(self, value: str) -> None:
         path = self._path_from_value(value)
@@ -268,6 +307,75 @@ class GuiController(QObject):
             False,
             lambda reporter, token: self._facade.doctor(path),
             lambda result: self._show_json_result(result, "Doctor completed"),
+        )
+
+    @Slot()
+    def refreshStructural(self) -> None:
+        path = self._require_repository()
+        if path is None or not self.workspaceInitialized:
+            return
+        self._submit(
+            path,
+            "structural_status",
+            False,
+            lambda reporter, token: self._facade.structural_status(path),
+            self._apply_structural_status,
+        )
+
+    @Slot("QVariantMap")
+    def rebuildStructural(self, values: dict[str, Any]) -> None:
+        path = self._require_repository()
+        if path is None:
+            return
+        request = StructuralBaselineRequest(
+            repository=path,
+            cutoff_text=self._optional_text(values.get("cutoff")),
+            branch=self._optional_text(values.get("branch")),
+            scope=self._optional_text(values.get("scope")),
+            time_strategy=str(values.get("timeStrategy", "lifetime")),
+        )
+        self._submit(
+            path,
+            "structural_rebuild",
+            True,
+            lambda reporter, token: self._facade.rebuild_structural(
+                request,
+                progress=reporter,
+                cancellation=token,
+            ),
+            self._apply_structural_baseline,
+        )
+
+    @Slot(str)
+    def showStructural(self, baseline_id: str) -> None:
+        path = self._require_repository()
+        if path is None:
+            return
+        target = baseline_id.strip() or str(
+            self._structural_status().get("latestBaselineId") or ""
+        )
+        if not target:
+            self.notification.emit("No structural baseline is available")
+            return
+        self._submit(
+            path,
+            "structural_show",
+            False,
+            lambda reporter, token: self._facade.show_structural(path, target),
+            self._apply_structural_baseline,
+        )
+
+    @Slot(int)
+    def pruneStructural(self, keep: int) -> None:
+        path = self._require_repository()
+        if path is None:
+            return
+        self._submit(
+            path,
+            "structural_prune",
+            True,
+            lambda reporter, token: self._facade.prune_structural(path, keep=keep),
+            self._apply_structural_prune,
         )
 
     @Slot()
@@ -625,6 +733,7 @@ class GuiController(QObject):
         self._status = dict(result)
         self.repositoryChanged.emit()
         self.statusChanged.emit()
+        self.structuralChanged.emit()
         self.recentChanged.emit()
         if self.workspaceInitialized:
             self.refreshIdentities()
@@ -634,6 +743,7 @@ class GuiController(QObject):
     def _apply_status(self, result: Any, message: str) -> None:
         self._status = dict(result)
         self.statusChanged.emit()
+        self.structuralChanged.emit()
         self.notification.emit(message)
         self.refreshIdentities()
         self.refreshRuns()
@@ -645,6 +755,7 @@ class GuiController(QObject):
             return
         self._status = self._facade.status(path)
         self.statusChanged.emit()
+        self.structuralChanged.emit()
         self.notification.emit(message)
         self.refreshIdentities()
 
@@ -658,6 +769,27 @@ class GuiController(QObject):
 
     def _apply_providers(self, result: Any) -> None:
         self._providers_model.set_rows(list(result.get("providers", [])))
+
+    def _apply_structural_status(self, result: Any) -> None:
+        self._status["structural"] = dict(result)
+        self.structuralChanged.emit()
+
+    def _apply_structural_baseline(self, result: Any) -> None:
+        data = dict(result)
+        materialization = data.get("materialization", {})
+        self._structural_hotspots_model.set_rows(list(materialization.get("hotspots", [])))
+        self._structural_couplings_model.set_rows(
+            list(materialization.get("couplings", []))
+        )
+        self._current_report_json = json.dumps(data, ensure_ascii=False, indent=2)
+        self.resultChanged.emit()
+        self.structuralChanged.emit()
+        self.notification.emit("Structural observation loaded")
+        self.refreshStructural()
+
+    def _apply_structural_prune(self, result: Any) -> None:
+        self._show_json_result(result, "Structural baselines pruned")
+        self.refreshStructural()
 
     def _apply_report(self, report: Any) -> None:
         data = dict(report)
@@ -696,6 +828,10 @@ class GuiController(QObject):
             self._error_message = ""
             self._error_detail = ""
             self.errorChanged.emit()
+
+    def _structural_status(self) -> dict[str, Any]:
+        value = self._status.get("structural", {})
+        return value if isinstance(value, dict) else {}
 
     @staticmethod
     def _path_from_value(value: str) -> Path:

@@ -154,6 +154,7 @@ ApplicationWindow {
                 Repeater {
                     model: [
                         {label: qsTr("Overview"), shortLabel: "O"},
+                        {label: qsTr("Structure"), shortLabel: "ST"},
                         {label: qsTr("Assessment"), shortLabel: "A"},
                         {label: qsTr("Trends"), shortLabel: "T"},
                         {label: qsTr("People"), shortLabel: "P"},
@@ -365,6 +366,184 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 300
                             }
+                        }
+                    }
+
+                    // Structural observations
+                    ColumnLayout {
+                        spacing: 14
+                        Layout.margins: 28
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label {
+                                text: qsTr("Structural observations")
+                                font.pixelSize: 24
+                                font.bold: true
+                                Layout.fillWidth: true
+                            }
+                            Label {
+                                text: qsTr("OBSERVATION ONLY")
+                                color: palette.highlight
+                                font.bold: true
+                            }
+                            Button {
+                                text: qsTr("Refresh")
+                                enabled: gca.workspaceInitialized && !gca.busy
+                                onClicked: gca.refreshStructural()
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Baselines"); color: palette.mid }
+                                Label { text: gca.structuralBaselineCount; font.pixelSize: 24; font.bold: true }
+                            }
+                            Rectangle { width: 1; height: 46; color: palette.midlight }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 20
+                                Label { text: qsTr("Processed commits"); color: palette.mid }
+                                Label { text: gca.structuralProcessedCommits; font.pixelSize: 24; font.bold: true }
+                            }
+                            Rectangle { width: 1; height: 46; color: palette.midlight }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Layout.leftMargin: 20
+                                Label { text: qsTr("Latest baseline"); color: palette.mid }
+                                Label {
+                                    text: gca.structuralLatestBaselineId || qsTr("None")
+                                    font.family: "monospace"
+                                    elide: Text.ElideMiddle
+                                    Layout.maximumWidth: 360
+                                }
+                            }
+                        }
+
+                        GridLayout {
+                            columns: width < 900 ? 2 : 4
+                            columnSpacing: 12
+                            rowSpacing: 8
+                            Layout.fillWidth: true
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Exclusive cutoff") }
+                                TextField { id: structuralCutoff; placeholderText: "2026-07-01T00:00:00Z"; Layout.fillWidth: true }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Branch") }
+                                TextField { id: structuralBranch; placeholderText: qsTr("Configured default"); Layout.fillWidth: true }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Scope") }
+                                TextField { id: structuralScope; placeholderText: qsTr("Entire repository"); Layout.fillWidth: true }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                Label { text: qsTr("Time strategy") }
+                                ComboBox { id: structuralStrategy; model: ["lifetime", "rolling-window", "dual-window"]; Layout.fillWidth: true }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Button {
+                                text: qsTr("Rebuild")
+                                enabled: gca.workspaceInitialized && !gca.busy
+                                onClicked: gca.rebuildStructural({
+                                    cutoff: structuralCutoff.text,
+                                    branch: structuralBranch.text,
+                                    scope: structuralScope.text,
+                                    timeStrategy: structuralStrategy.currentText
+                                })
+                            }
+                            Button {
+                                text: qsTr("Show latest")
+                                enabled: gca.structuralLatestBaselineId.length > 0 && !gca.busy
+                                onClicked: gca.showStructural("")
+                            }
+                            Item { Layout.fillWidth: true }
+                            Label { text: qsTr("Keep") }
+                            SpinBox { id: structuralKeep; from: 0; to: 100; value: 8 }
+                            Button {
+                                text: qsTr("Prune")
+                                enabled: gca.structuralBaselineCount > structuralKeep.value && !gca.busy
+                                onClicked: structuralPruneConfirm.open()
+                            }
+                        }
+
+                        SplitView {
+                            orientation: Qt.Horizontal
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            ColumnLayout {
+                                SplitView.fillWidth: true
+                                SplitView.minimumWidth: 300
+                                Label { text: qsTr("Hotspots"); font.pixelSize: 18; font.bold: true }
+                                TextField { placeholderText: qsTr("Filter hotspots"); onTextChanged: gca.structuralHotspotsModel.set_filter(text); Layout.fillWidth: true }
+                                ListView {
+                                    model: gca.structuralHotspotsModel
+                                    clip: true
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    delegate: Rectangle {
+                                        required property var model
+                                        width: ListView.view.width
+                                        height: 48
+                                        color: index % 2 ? palette.alternateBase : palette.base
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+                                            Label { text: model.path || ""; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                                            Label { text: model.changeCount || 0; Layout.preferredWidth: 60; horizontalAlignment: Text.AlignRight }
+                                            Label { text: model.confidence || ""; Layout.preferredWidth: 80 }
+                                        }
+                                    }
+                                }
+                            }
+
+                            ColumnLayout {
+                                SplitView.fillWidth: true
+                                SplitView.minimumWidth: 360
+                                Label { text: qsTr("Couplings"); font.pixelSize: 18; font.bold: true }
+                                TextField { placeholderText: qsTr("Filter couplings"); onTextChanged: gca.structuralCouplingsModel.set_filter(text); Layout.fillWidth: true }
+                                ListView {
+                                    model: gca.structuralCouplingsModel
+                                    clip: true
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    delegate: Rectangle {
+                                        required property var model
+                                        width: ListView.view.width
+                                        height: 56
+                                        color: index % 2 ? palette.alternateBase : palette.base
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: 7
+                                            Label { text: model.leftPath || ""; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Label { text: model.rightPath || ""; elide: Text.ElideMiddle; Layout.fillWidth: true }
+                                                Label { text: qsTr("%1 co-changes").arg(model.coChangeCount || 0); Layout.preferredWidth: 110 }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Dialog {
+                            id: structuralPruneConfirm
+                            title: qsTr("Prune structural baselines")
+                            standardButtons: Dialog.Ok | Dialog.Cancel
+                            onAccepted: gca.pruneStructural(structuralKeep.value)
+                            Label { text: qsTr("Remove rebuildable baselines beyond the selected retention count?"); wrapMode: Text.WordWrap }
                         }
                     }
 

@@ -25,7 +25,43 @@ class FakeFacade:
             "indexedCommits": 4,
             "identities": 2,
             "unresolvedIdentities": 0,
+            "structural": {
+                "baselineCount": 1,
+                "latestBaselineId": "baseline-1",
+                "processedCommits": 4,
+                "unhealthyBaselines": 0,
+            },
         }
+
+    def structural_status(self, path: Path) -> dict[str, Any]:
+        return {
+            "baselineCount": 1,
+            "latestBaselineId": "baseline-1",
+            "processedCommits": 4,
+            "unhealthyBaselines": 0,
+        }
+
+    def show_structural(self, path: Path, baseline_id: str) -> dict[str, Any]:
+        return {
+            "baselineId": baseline_id,
+            "status": "COMPLETED",
+            "materialization": {
+                "hotspots": [{"path": "src/a.py", "changeCount": 4}],
+                "couplings": [
+                    {
+                        "leftPath": "src/a.py",
+                        "rightPath": "db/b.sql",
+                        "coChangeCount": 3,
+                    }
+                ],
+            },
+        }
+
+    def rebuild_structural(self, request: object, **kwargs: object) -> dict[str, Any]:
+        return self.show_structural(Path("repository"), "baseline-2")
+
+    def prune_structural(self, path: Path, *, keep: int) -> dict[str, int]:
+        return {"deletedBaselines": 1, "remainingBaselines": keep}
 
     def assess(self, request: object, **kwargs: object) -> dict[str, Any]:
         self.assessment_requests.append(request)
@@ -107,3 +143,35 @@ def test_controller_should_project_assessment_result(tmp_path: Path) -> None:
     assert controller.workItemsModel.rowCount() == 1
     assert controller.evidenceModel.rowCount() == 1
     assert len(facade.assessment_requests) == 1
+
+
+def test_controller_should_project_structural_observations(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    controller = GuiController(
+        facade=FakeFacade(),  # type: ignore[arg-type]
+        task_runner=RepositoryTaskRunner(max_threads=1),
+        settings=GuiSettings(tmp_path / "settings.ini"),
+    )
+    controller.openRepository(str(repository))
+    _wait_until(lambda: controller.structuralLatestBaselineId == "baseline-1")
+
+    controller.showStructural("")
+
+    _wait_until(lambda: controller.structuralHotspotsModel.rowCount() == 1)
+    assert controller.structuralBaselineCount == 1
+    assert controller.structuralProcessedCommits == 4
+    assert controller.structuralCouplingsModel.rowCount() == 1
+
+    controller.rebuildStructural(
+        {
+            "cutoff": "2026-07-01T00:00:00Z",
+            "branch": "main",
+            "scope": "src",
+            "timeStrategy": "lifetime",
+        }
+    )
+    _wait_until(lambda: "baseline-2" in controller.currentReportJson)
+
+    controller.pruneStructural(1)
+    _wait_until(lambda: not controller.busy)

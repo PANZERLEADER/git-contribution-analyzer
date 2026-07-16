@@ -62,11 +62,18 @@ class SqliteGitIndexStore:
         deliveries: Iterable[CommitDelivery],
         *,
         clear_existing: bool,
+        default_branch: str | None = None,
     ) -> None:
         engine = create_database_engine(self.database_path)
         try:
             with engine.begin() as connection:
                 repository_id = self._repository_id(connection)
+                if default_branch is not None:
+                    connection.execute(
+                        update(repositories)
+                        .where(repositories.c.id == repository_id)
+                        .values(default_branch=default_branch, updated_at=datetime.now(UTC))
+                    )
                 if clear_existing:
                     self._clear(connection, repository_id)
                 self._replace_refs(connection, repository_id, git_refs)
@@ -243,11 +250,9 @@ class SqliteGitIndexStore:
         )
         connection.execute(
             alias_statement.on_conflict_do_update(
-                index_elements=[
-                    identity_aliases.c.repository_id,
-                    identity_aliases.c.name,
-                    identity_aliases.c.email,
-                ],
+                # Alias IDs normalize email case, so case-only Git author variants
+                # must resolve through the same primary key as well.
+                index_elements=[identity_aliases.c.id],
                 set_={
                     "person_id": person_id,
                     "source": identity.source,

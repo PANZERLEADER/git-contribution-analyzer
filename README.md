@@ -54,6 +54,14 @@ gca identities map D:\path\to\repository `
 gca status D:\path\to\repository --json
 gca doctor D:\path\to\repository --json
 
+# Build and inspect an observation-only historical structural baseline.
+gca structural rebuild D:\path\to\repository `
+  --cutoff 2026-07-01T00:00:00Z `
+  --time-strategy lifetime --json
+gca structural status D:\path\to\repository --json
+gca structural show D:\path\to\repository --baseline <baseline-id> --json
+gca structural prune D:\path\to\repository --keep 8 --yes --json
+
 # Generate deterministic contribution evidence without an LLM.
 gca analyze D:\path\to\repository `
   --person alice@example.com `
@@ -212,6 +220,39 @@ counts do not directly determine the score.
 Shared or system accounts require manual review. If one email is used by both a person and an
 automation identity, do not use the combined Person for individual performance conclusions.
 
+## Historical Structural Observations
+
+`gca structural rebuild` materializes file-change frequencies and repeated file co-change
+relationships from local indexed Git history strictly before an exclusive cutoff. Baseline IDs
+include repository, branch, scope, cutoff and versioned rule configuration. Nonzero occurrences
+are retained so a low-frequency edge can cross a candidate threshold after later syncs. Lifetime,
+rolling-window and dual-window views are supported; coupling output includes conditional ratios,
+Jaccard and a hub penalty rather than treating every shared utility file as a dependency.
+
+This surface is observation-only. It does not modify `difficulty-rules-v1`, workload, delivery,
+ranking, resume output or LLM context. New workspaces use the conservative
+`community-baseline-v1` profile from `.gca/config.yml`; its automatic difficulty promotion switch is
+fixed to `false`. The profile is ready for observation-only use without project-specific human
+review. Empirical calibration and a repository-disjoint holdout are required only for a future rule
+that automatically changes individual difficulty. The feature uses local Git and SQLite only, with
+no Forge API or Hercules runtime dependency. The desktop Structure page exposes the same status,
+rebuild, show and prune operations.
+
+```yaml
+structural:
+  profile: community-baseline-v1
+  timeStrategy: DUAL_WINDOW
+  minimumBaselineCommits: 50
+  hotspotPercentile: 0.95
+  minimumCoChangeCount: 3
+  minimumSubsetRatio: 0.8
+  minimumJaccard: 0.3
+  minimumHubPenalty: 0.5
+  maximumContextPaths: 100
+  rollingWindowDays: 365
+  automaticDifficultyPromotion: false
+```
+
 ## Work Assessment
 
 `gca assess` separates completed (`LANDED`/`RELEASED`), pending (`AUTHORED_ONLY`), rework, and
@@ -281,6 +322,8 @@ remains readable during 1.x but is deprecated; new integrations should use `gca 
 - [Assessment and resume methodology](doc/guides/methodology.md)
 - [Privacy and provider data boundaries](doc/guides/privacy.md)
 - [Golden dataset](doc/testing/golden-dataset.md)
+- [Structural calibration protocol](doc/testing/structural-calibration.md)
+- [Structural calibration decision](doc/reports/structural-calibration-report.md)
 - [0.4.1 release](doc/releases/0.4.1.md)
 - [0.4.0 release](doc/releases/0.4.0.md)
 - [0.3.0 release](doc/releases/0.3.0.md)

@@ -16,6 +16,12 @@ repository paths in the operating system's application settings. It does not sto
 Provider prompts, reports, Evidence or source file contents in GUI settings. GCA GUI does not open
 a localhost port.
 
+Structural observations are also local. The SQLite workspace stores eligible commit hashes,
+normalized paths, file/pair occurrences and materialized baseline JSON. These records can reveal
+repository topology and change patterns even though source bodies are not stored. Structural
+commands do not call Forge APIs, Hercules or LLM providers. Review paths before sharing baseline
+JSON outside the repository owner group.
+
 ## LLM Context
 
 Provider requests use a redacted, allowlisted context. They may contain:
@@ -53,6 +59,7 @@ Keep them outside public repositories unless approved.
 
 ## Retention And Removal
 
-`gca uninit <repo> --yes` removes the local workspace. Provider invocation audit stores hashes,
+`gca structural prune <repo> --keep N --yes` removes old rebuildable baseline aggregates while
+retaining indexed facts. `gca uninit <repo> --yes` removes the entire local workspace. Provider invocation audit stores hashes,
 versions, status and validated responses, never API keys. Organizational retention and access
 policies remain the responsibility of the repository owner.

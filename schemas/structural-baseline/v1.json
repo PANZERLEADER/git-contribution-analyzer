@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gca.local/schemas/structural-baseline/v1.json",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "baselineId",
+    "status",
+    "baselineCommit",
+    "cutoff",
+    "branch",
+    "scope",
+    "timeStrategy",
+    "ruleVersions",
+    "summary",
+    "materialization"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "baselineId": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "status": { "const": "COMPLETED" },
+    "baselineCommit": { "type": ["string", "null"] },
+    "cutoff": { "type": "string", "format": "date-time" },
+    "branch": { "type": "string" },
+    "scope": { "type": ["string", "null"] },
+    "timeStrategy": { "enum": ["LIFETIME", "ROLLING_WINDOW", "DUAL_WINDOW"] },
+    "configuration": {
+      "type": "object",
+      "required": [
+        "minimumBaselineCommits",
+        "hotspotPercentile",
+        "minimumCoChangeCount",
+        "minimumSubsetRatio",
+        "minimumJaccard",
+        "minimumHubPenalty",
+        "maximumContextPaths",
+        "rollingWindowDays"
+      ],
+      "properties": {
+        "minimumBaselineCommits": { "type": "integer", "minimum": 1 },
+        "hotspotPercentile": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minimumCoChangeCount": { "type": "integer", "minimum": 1 },
+        "minimumSubsetRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minimumJaccard": { "type": "number", "minimum": 0, "maximum": 1 },
+        "minimumHubPenalty": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximumContextPaths": { "type": "integer", "minimum": 1 },
+        "rollingWindowDays": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "ruleVersions": {
+      "type": "object",
+      "required": ["facts", "metrics", "thresholds"],
+      "properties": {
+        "facts": { "type": "string" },
+        "metrics": { "type": "string" },
+        "thresholds": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["eligibleCommits", "eligibleFiles", "rawEdges", "cappedCommits"],
+      "properties": {
+        "eligibleCommits": { "type": "integer", "minimum": 0 },
+        "eligibleFiles": { "type": "integer", "minimum": 0 },
+        "rawEdges": { "type": "integer", "minimum": 0 },
+        "cappedCommits": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "materialization": {
+      "type": "object",
+      "required": ["hotspots", "couplings", "confidence", "gaps", "limitations"],
+      "properties": {
+        "hotspots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "changeCount", "percentile", "recentPercentile", "confidence"],
+            "properties": {
+              "path": { "type": "string" },
+              "changeCount": { "type": "integer", "minimum": 1 },
+              "percentile": { "type": "number", "minimum": 0, "maximum": 1 },
+              "recentPercentile": { "type": "number", "minimum": 0, "maximum": 1 },
+              "confidence": { "enum": ["LOW", "MEDIUM", "HIGH"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "couplings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "leftPath",
+              "rightPath",
+              "coChangeCount",
+              "subsetRatio",
+              "leftConditional",
+              "rightConditional",
+              "jaccard",
+              "hubPenalty",
+              "crossModule",
+              "confidence"
+            ],
+            "properties": {
+              "leftPath": { "type": "string" },
+              "rightPath": { "type": "string" },
+              "coChangeCount": { "type": "integer", "minimum": 1 },
+              "subsetRatio": { "type": "number", "minimum": 0, "maximum": 1 },
+              "leftConditional": { "type": "number", "minimum": 0, "maximum": 1 },
+              "rightConditional": { "type": "number", "minimum": 0, "maximum": 1 },
+              "jaccard": { "type": "number", "minimum": 0, "maximum": 1 },
+              "hubPenalty": { "type": "number", "minimum": 0, "maximum": 1 },
+              "crossModule": { "type": "boolean" },
+              "confidence": { "enum": ["LOW", "MEDIUM", "HIGH"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "confidence": { "enum": ["LOW", "MEDIUM", "HIGH"] },
+        "gaps": { "type": "array", "items": { "type": "string" } },
+        "limitations": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

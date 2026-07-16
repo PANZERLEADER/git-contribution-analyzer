@@ -41,6 +41,7 @@ protection for both CLI and GUI processes.
 
 ```text
 init/index/sync -> Git index -> identity normalization
+                -> structural fact occurrences -> immutable structural baseline/cache
                               -> EvidenceSnapshot
                                   -> analyze
                                   -> assess -> optional assessment explanation
@@ -55,6 +56,13 @@ Analysis derives `structural-signals-v1` from the snapshot commit facts. The pur
 calculates repeated file co-change edges and structural hotspots without reading Git or SQLite.
 Person and project report JSON persist the signals and their supporting commit hashes, while the
 LLM context, workload, difficulty and ranking inputs remain unchanged.
+
+Historical structural baselines are a separate observation flow. Index/sync writes normalized
+commit, file and edge occurrences. An explicit rebuild reads only target-ref commits strictly
+before its cutoff, computes a pure Domain baseline, then atomically publishes file counts, edge
+counts and a versioned materialization. Status/show/prune are application use cases shared by the
+CLI and GUI; neither adapter queries the structural tables directly. Cancellation is checked
+before publication, so a cancelled build cannot become consumable.
 
 ## Extension Points
 

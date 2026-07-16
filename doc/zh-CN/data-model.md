@@ -47,6 +47,21 @@ inactive source Person 并记录其 target redirect，历史 run JSON 保持不�
 
 工作评估和简历结果存储在 `analysis_runs.result_json`。即使后续规则版本变化，历史结果仍可以重放。
 
+## 结构基线表
+
+| 表 | 用途 |
+|---|---|
+| `structural_commit_facts` | 有效索引提交元数据和事实规则版本 |
+| `structural_file_occurrences` | 按 commit 保存所有非零有效文件 occurrence |
+| `structural_edge_occurrences` | 按 commit 保存所有非零规范文件对 occurrence |
+| `structural_baselines` | 不可变的仓库/分支/范围/cutoff baseline 身份和状态 |
+| `structural_file_counts` | 一个 baseline 的 lifetime/recent 文件计数 |
+| `structural_edge_counts` | 一个 baseline 的 lifetime/recent 文件对计数 |
+| `structural_materializations` | 带版本 hotspot/coupling JSON 和内容 hash |
+
+Occurrence 是可从本地 Git 重建的观察数据，低于展示阈值时也会保留。只有 `COMPLETED` baseline
+可消费；不完整状态只用于诊断。prune 只删除可重建 baseline 聚合，不删除 Git 事实或历史分析 run。
+
 ## 数据库迁移
 
 - `0001_initial`：仓库和初始 run 状态。
@@ -54,6 +69,8 @@ inactive source Person 并记录其 target redirect，历史 run JSON 保持不�
 - `0003_analysis`：Contribution Item、Evidence 和能力结果。
 - `0004_llm_audit`：调用审计和响应缓存。
 - `0005_run_types`：显式 run type 和可选父 run。
+- `0006_identity_merges`：可逆 Person 合并事件和 redirect。
+- `0007_structural_baselines`：结构事实、occurrence、baseline 和 materialization。
 
 打开工作区时会自动执行升级。降级属于维护操作，必须先备份数据库。集成测试覆盖
-`0004 -> 0005 -> 0004` 路径。
+迁移与仓库生命周期路径。

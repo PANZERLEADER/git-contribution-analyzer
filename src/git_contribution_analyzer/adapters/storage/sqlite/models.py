@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     MetaData,
     String,
@@ -229,4 +231,124 @@ commit_delivery = Table(
     Column("release_ref", String, nullable=True),
     Column("related_commit_hash", String(64), nullable=True),
     Column("evaluated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+structural_commit_facts = Table(
+    "structural_commit_facts",
+    metadata,
+    Column("repository_id", String(36), ForeignKey("repositories.id"), primary_key=True),
+    Column("commit_hash", String(64), primary_key=True),
+    Column("fact_rule_version", String(40), primary_key=True),
+    Column("occurred_at", DateTime(timezone=True), nullable=False),
+    Column("path_count", Integer, nullable=False),
+    Column("edge_count", Integer, nullable=False),
+    Column("context_capped", Boolean, nullable=False),
+    Column("excluded_reason", String(40), nullable=True),
+    Column("processed_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+structural_file_occurrences = Table(
+    "structural_file_occurrences",
+    metadata,
+    Column("repository_id", String(36), nullable=False, primary_key=True),
+    Column("commit_hash", String(64), nullable=False, primary_key=True),
+    Column("fact_rule_version", String(40), nullable=False, primary_key=True),
+    Column("path", Text, nullable=False, primary_key=True),
+    ForeignKeyConstraint(
+        ["repository_id", "commit_hash", "fact_rule_version"],
+        [
+            "structural_commit_facts.repository_id",
+            "structural_commit_facts.commit_hash",
+            "structural_commit_facts.fact_rule_version",
+        ],
+        ondelete="CASCADE",
+    ),
+)
+
+structural_edge_occurrences = Table(
+    "structural_edge_occurrences",
+    metadata,
+    Column("repository_id", String(36), nullable=False, primary_key=True),
+    Column("commit_hash", String(64), nullable=False, primary_key=True),
+    Column("fact_rule_version", String(40), nullable=False, primary_key=True),
+    Column("left_path", Text, nullable=False, primary_key=True),
+    Column("right_path", Text, nullable=False, primary_key=True),
+    CheckConstraint("left_path < right_path", name="ck_structural_edge_order"),
+    ForeignKeyConstraint(
+        ["repository_id", "commit_hash", "fact_rule_version"],
+        [
+            "structural_commit_facts.repository_id",
+            "structural_commit_facts.commit_hash",
+            "structural_commit_facts.fact_rule_version",
+        ],
+        ondelete="CASCADE",
+    ),
+)
+
+structural_baselines = Table(
+    "structural_baselines",
+    metadata,
+    Column("id", String(64), primary_key=True),
+    Column("repository_id", String(36), ForeignKey("repositories.id"), nullable=False),
+    Column("baseline_commit", String(64), nullable=True),
+    Column("cutoff_at", DateTime(timezone=True), nullable=False),
+    Column("branch", Text, nullable=False),
+    Column("scope", Text, nullable=True),
+    Column("filter_fingerprint", String(64), nullable=False),
+    Column("time_strategy", String(24), nullable=False),
+    Column("fact_rule_version", String(40), nullable=False),
+    Column("metric_rule_version", String(40), nullable=False),
+    Column("threshold_version", String(40), nullable=False),
+    Column("status", String(20), nullable=False),
+    Column("eligible_commit_count", Integer, nullable=False, default=0),
+    Column("eligible_file_count", Integer, nullable=False, default=0),
+    Column("raw_edge_count", Integer, nullable=False, default=0),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("completed_at", DateTime(timezone=True), nullable=True),
+    Column("error_message", Text, nullable=True),
+)
+
+structural_file_counts = Table(
+    "structural_file_counts",
+    metadata,
+    Column(
+        "baseline_id",
+        String(64),
+        ForeignKey("structural_baselines.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("path", Text, primary_key=True),
+    Column("change_count", Integer, nullable=False),
+    Column("recent_change_count", Integer, nullable=False),
+)
+
+structural_edge_counts = Table(
+    "structural_edge_counts",
+    metadata,
+    Column(
+        "baseline_id",
+        String(64),
+        ForeignKey("structural_baselines.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("left_path", Text, primary_key=True),
+    Column("right_path", Text, primary_key=True),
+    Column("co_change_count", Integer, nullable=False),
+    Column("recent_co_change_count", Integer, nullable=False),
+)
+
+structural_materializations = Table(
+    "structural_materializations",
+    metadata,
+    Column(
+        "baseline_id",
+        String(64),
+        ForeignKey("structural_baselines.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("metric_rule_version", String(40), primary_key=True),
+    Column("threshold_version", String(40), primary_key=True),
+    Column("content_hash", String(64), nullable=False),
+    Column("result_json", Text, nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
 )

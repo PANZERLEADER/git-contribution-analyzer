@@ -42,6 +42,12 @@ Assertions focus on stable contracts rather than generated UUIDs or timestamps. 
 version that intentionally changes a golden result must update the test and this document in the
 same change, with a rationale in `CHANGELOG.md`.
 
+Structural baseline tests additionally lock exclusive cutoff behavior, duplicate/merge/generated/
+binary exclusion, context-cap gaps, low-frequency occurrence retention, hub-aware coupling,
+incremental sync, status/show/prune schemas and cancellation before publication. Calibration and
+holdout fixtures are optional promotion-validation templates; they are not required for the
+observation-only community profile and are not golden evidence for enabling a difficulty rule.
+
 ## Private Reference Repositories
 
 Large private repositories may be used for performance and calibration, but only anonymous counts,

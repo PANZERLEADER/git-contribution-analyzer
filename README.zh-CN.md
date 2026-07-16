@@ -65,6 +65,14 @@ gca identities map D:\path\to\repository `
 gca status D:\path\to\repository --json
 gca doctor D:\path\to\repository --json
 
+# 构建并查看仅用于观察的历史结构基线。
+gca structural rebuild D:\path\to\repository `
+  --cutoff 2026-07-01T00:00:00Z `
+  --time-strategy lifetime --json
+gca structural status D:\path\to\repository --json
+gca structural show D:\path\to\repository --baseline <baseline-id> --json
+gca structural prune D:\path\to\repository --keep 8 --yes --json
+
 # 对一个已确认人员执行不使用 LLM 的确定性贡献分析。
 gca analyze D:\path\to\repository `
   --person alice@example.com `
@@ -120,6 +128,35 @@ gca uninit D:\path\to\repository --yes
 ```
 
 完整参数、退出码和命令组合见 [中文 CLI 参考](doc/zh-CN/cli-reference.md)。
+
+## 历史结构观察
+
+`gca structural rebuild` 使用本地已索引 Git 历史，在严格排除 cutoff 当期提交后，物化文件变更
+频率和重复共同变更关系。Baseline ID 包含仓库、分支、范围、cutoff 和带版本规则配置。所有非零
+occurrence 都会保留，使低频边在后续同步后能够跨过候选阈值。时间视图支持 lifetime、rolling-window
+和 dual-window；coupling 同时报告条件比例、Jaccard 和 hub penalty，不能把共享工具文件直接解释为
+依赖关系。
+
+该能力当前是 observation-only：不会修改 `difficulty-rules-v1`、工作量、交付、排名、简历或 LLM
+上下文。新工作区默认使用 `.gca/config.yml` 中保守的 `community-baseline-v1`，并固定关闭自动
+difficulty 提升。该配置无需项目专属人工审核即可用于结构观察；只有未来要让结构信号自动改变个人
+difficulty 时，才需要经验校准和仓库互斥 holdout。实现只使用本地 Git 与 SQLite，不依赖 Forge API
+或 Hercules runtime。桌面端“Structure”页面提供相同的 status、rebuild、show 和 prune 操作。
+
+```yaml
+structural:
+  profile: community-baseline-v1
+  timeStrategy: DUAL_WINDOW
+  minimumBaselineCommits: 50
+  hotspotPercentile: 0.95
+  minimumCoChangeCount: 3
+  minimumSubsetRatio: 0.8
+  minimumJaccard: 0.3
+  minimumHubPenalty: 0.5
+  maximumContextPaths: 100
+  rollingWindowDays: 365
+  automaticDifficultyPromotion: false
+```
 
 ## 数据和索引边界
 

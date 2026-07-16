@@ -39,6 +39,7 @@ Qt signal 跨越 Adapter 边界。取消是协作式的，只在事务安全点�
 
 ```text
 init/index/sync -> Git index -> 身份规范化
+                -> 结构事实 occurrence -> 不可变结构 baseline/cache
                               -> EvidenceSnapshot
                                   -> analyze
                                   -> assess -> 可选工作评估解释
@@ -54,6 +55,11 @@ init/index/sync -> Git index -> 身份规范化
 分析流程通过纯 Domain 服务从 Snapshot 提交事实中推导 `structural-signals-v1`。该服务计算重复文件
 共同变更边和结构热点，不直接读取 Git 或 SQLite。个人和项目报告会持久化信号及其支持提交哈希，
 但 LLM 上下文、工作量、难度和排名输入保持不变。
+
+历史结构 baseline 是独立的 observation 流程。index/sync 写入规范化的 commit、file 和 edge
+occurrence；显式 rebuild 只读取目标 ref 上严格早于 cutoff 的提交，由纯 Domain 服务计算 baseline，
+再原子发布 file count、edge count 和带版本 materialization。CLI 与 GUI 共用 status/show/prune
+Application 用例，Adapter 不直接查询结构表。发布前会检查取消令牌，被取消的构建不会成为可消费结果。
 
 ## 扩展点
 

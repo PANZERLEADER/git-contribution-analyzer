@@ -54,6 +54,22 @@ field. It records its rule version, analyzed scope counts, repeated co-change pa
 supporting commit hashes and interpretation limits. Older persisted v1 reports remain valid when
 the field is absent.
 
+## Structural Baseline Tables
+
+| Table | Purpose |
+|---|---|
+| `structural_commit_facts` | Eligible indexed commit metadata and fact-rule version |
+| `structural_file_occurrences` | Every nonzero eligible file occurrence by commit |
+| `structural_edge_occurrences` | Every nonzero canonical file-pair occurrence by commit |
+| `structural_baselines` | Immutable repository/branch/scope/cutoff baseline identity and state |
+| `structural_file_counts` | Lifetime and recent file counts for one baseline |
+| `structural_edge_counts` | Lifetime and recent pair counts for one baseline |
+| `structural_materializations` | Versioned hotspot/coupling JSON and content hash |
+
+Occurrences are rebuildable local observations and are intentionally retained below display
+thresholds. `COMPLETED` baselines are consumable; incomplete states are diagnostic only. Prune
+removes rebuildable baseline aggregates, not Git facts or historical analysis runs.
+
 ## Migrations
 
 - `0001_initial`: repository and initial run state.
@@ -61,6 +77,8 @@ the field is absent.
 - `0003_analysis`: contribution items, Evidence and capability results.
 - `0004_llm_audit`: invocation audit and response cache.
 - `0005_run_types`: explicit run type and optional parent run.
+- `0006_identity_merges`: reversible Person merge events and redirects.
+- `0007_structural_baselines`: structural facts, occurrences, baselines and materializations.
 
 Upgrade is automatic during workspace open. Downgrade is a maintenance operation and must use a
-database backup. The `0004 -> 0005 -> 0004` path is covered by integration tests.
+database backup. Migration and repository lifecycle paths are covered by integration tests.

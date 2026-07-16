@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "status": "COMMUNITY_BASELINE_READY_OBSERVATION_ONLY",
+  "policy": {
+    "mode": "OBSERVATION_ONLY",
+    "automaticDifficultyPromotion": false,
+    "empiricalCalibrationRequiredForPromotion": true
+  },
+  "structural": {
+    "profile": "community-baseline-v1",
+    "timeStrategy": "DUAL_WINDOW",
+    "minimumBaselineCommits": 50,
+    "hotspotPercentile": 0.95,
+    "minimumCoChangeCount": 3,
+    "minimumSubsetRatio": 0.8,
+    "minimumJaccard": 0.3,
+    "minimumHubPenalty": 0.5,
+    "maximumContextPaths": 100,
+    "rollingWindowDays": 365,
+    "automaticDifficultyPromotion": false
+  }
+}

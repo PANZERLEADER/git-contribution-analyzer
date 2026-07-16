@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Add observation-only historical structural baselines with strict cutoffs, lifetime/rolling/dual
+  windows, hotspot percentiles, hub-aware coupling metrics and content-addressed identities.
+- Persist structural commit/file/edge occurrences and immutable baseline caches in SQLite, with
+  `structural status/rebuild/show/prune`, repository status/doctor diagnostics and GUI controls.
+- Publish repository status as `status/v2` while preserving the original `status/v1` contract, and
+  retain sanitized BUILDING/FAILED/CANCELLED/STALE structural diagnostics without exposing paths.
+- Add the conservative `community-baseline-v1` workspace profile with complete cache fingerprinting,
+  explicit hub filtering and automatic difficulty promotion fixed to `false`.
+- Preserve `difficulty-rules-v1` and all assessment/ranking/resume behavior; human calibration and
+  repository-disjoint holdout are required only before a future automatic promotion rule. No Forge
+  API, Hercules runtime, project-health or AI-provenance dependency is introduced.
+- Add a deterministic public-repository calibration package builder with 80-item stratified
+  sampling, three time-strategy evidence views, independent Reviewer A/B sheets and adjudication
+  templates while keeping holdout repositories untouched.
+- Treat Gitlink/submodule changes as external binary context so repositories with valid missing
+  submodule objects can be indexed without weakening ordinary Blob validation.
+
 ## 0.4.1 - 2026-07-15
 
 - Keep CLI standalone artifacts free of PySide6, shiboken6 and QML resources when GUI build

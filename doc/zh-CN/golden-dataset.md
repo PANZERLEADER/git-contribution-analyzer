@@ -39,6 +39,10 @@ init -> identities map -> analyze --no-llm
 断言关注稳定行为契约，不依赖随机 UUID 或时间戳。新的规则版本如有意改变黄金结果，必须在同一
 变更中更新测试和本文档，并在 `CHANGELOG.md` 说明原因。
 
+结构 baseline 测试还会锁定排他 cutoff、duplicate/merge/generated/binary 排除、context-cap gap、
+低频 occurrence 保留、hub-aware coupling、增量 sync、status/show/prune Schema，以及发布前取消。
+Calibration/holdout fixture 目前是刻意留空的模板，不能作为启用 difficulty 新规则的黄金证据。
+
 ## 私有参考仓库
 
 大型私有仓库可以用于性能和规则校准，但仓库中只能提交匿名计数、耗时和文件大小。源码、邮箱、

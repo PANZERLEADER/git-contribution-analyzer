@@ -14,6 +14,7 @@ from git_contribution_analyzer.application.dto.gui import (
     IdentityMapRequest,
     IdentityMergeRequest,
     ResumeRequest,
+    StructuralBaselineRequest,
 )
 from git_contribution_analyzer.application.ports.cancellation import (
     CancellationToken,
@@ -47,6 +48,13 @@ from git_contribution_analyzer.application.use_cases.manage_identity_merges impo
     preview_identity_merge,
     unmerge_identities,
 )
+from git_contribution_analyzer.application.use_cases.manage_structural_baselines import (
+    default_structural_cutoff,
+    get_structural_status,
+    prune_structural_baselines,
+    rebuild_structural_baseline,
+    show_structural_baseline,
+)
 from git_contribution_analyzer.application.use_cases.map_identity import map_identity
 from git_contribution_analyzer.application.use_cases.recover_runs import (
     recover_interrupted_runs,
@@ -63,6 +71,7 @@ from git_contribution_analyzer.domain.errors import (
     WorkspaceError,
 )
 from git_contribution_analyzer.domain.models.analysis import AnalysisFilters
+from git_contribution_analyzer.domain.models.structural_baseline import StructuralTimeStrategy
 from git_contribution_analyzer.domain.services.ranking_rules import SUPPORTED_DIMENSIONS
 
 _TIME_BASES = {"AUTHORED", "COMMITTED", "MERGED", "LANDED", "RELEASED"}
@@ -113,6 +122,40 @@ class GuiApplicationFacade:
             progress=progress,
             cancellation=cancellation,
         )
+
+    def structural_status(self, path: Any) -> dict[str, Any]:
+        return get_structural_status(path)
+
+    def rebuild_structural(
+        self,
+        request: StructuralBaselineRequest,
+        *,
+        progress: ProgressReporter | None = None,
+        cancellation: CancellationToken | None = None,
+    ) -> dict[str, Any]:
+        cutoff = (
+            parse_boundaries(request.cutoff_text, None)[0]
+            if request.cutoff_text
+            else default_structural_cutoff()
+        )
+        if cutoff is None:
+            raise ValueError("Structural cutoff is required")
+        strategy = StructuralTimeStrategy(request.time_strategy.replace("-", "_").upper())
+        return rebuild_structural_baseline(
+            request.repository,
+            cutoff=cutoff,
+            branch=request.branch,
+            scope=request.scope,
+            time_strategy=strategy,
+            progress=progress,
+            cancellation=cancellation,
+        )
+
+    def show_structural(self, path: Any, baseline_id: str) -> dict[str, Any]:
+        return show_structural_baseline(path, baseline_id)
+
+    def prune_structural(self, path: Any, *, keep: int) -> dict[str, int]:
+        return prune_structural_baselines(path, keep=keep)
 
     def list_identities(self, path: Any, *, unresolved_only: bool = False) -> dict[str, Any]:
         return list_identities(path, unresolved_only=unresolved_only)

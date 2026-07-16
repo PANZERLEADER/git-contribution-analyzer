@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Annotated
 
@@ -17,6 +18,7 @@ from git_contribution_analyzer.adapters.workspace.ranking_config import load_ran
 from git_contribution_analyzer.application.dto.results import CommandEnvelope
 from git_contribution_analyzer.application.services.time_boundaries import (
     parse_boundaries,
+    parse_boundary,
     uses_system_timezone,
 )
 from git_contribution_analyzer.application.use_cases.analyze_contributions import (
@@ -46,6 +48,13 @@ from git_contribution_analyzer.application.use_cases.manage_identity_merges impo
     preview_identity_merge,
     unmerge_identities,
 )
+from git_contribution_analyzer.application.use_cases.manage_structural_baselines import (
+    default_structural_cutoff,
+    get_structural_status,
+    prune_structural_baselines,
+    rebuild_structural_baseline,
+    show_structural_baseline,
+)
 from git_contribution_analyzer.application.use_cases.map_identity import map_identity
 from git_contribution_analyzer.application.use_cases.run_doctor import run_doctor
 from git_contribution_analyzer.application.use_cases.test_provider import test_provider
@@ -61,6 +70,7 @@ from git_contribution_analyzer.domain.errors import (
     WorkspaceError,
 )
 from git_contribution_analyzer.domain.models.analysis import AnalysisFilters
+from git_contribution_analyzer.domain.models.structural_baseline import StructuralTimeStrategy
 from git_contribution_analyzer.domain.services.ranking_rules import SUPPORTED_DIMENSIONS
 
 app = typer.Typer(
@@ -72,9 +82,11 @@ app = typer.Typer(
 identities_app = typer.Typer(help="Inspect and confirm Git author identities.")
 runs_app = typer.Typer(help="Inspect persisted deterministic analysis runs.")
 providers_app = typer.Typer(help="Inspect and test pluggable LLM providers.")
+structural_app = typer.Typer(help="Build and inspect historical structural baselines.")
 app.add_typer(identities_app, name="identities")
 app.add_typer(runs_app, name="runs")
 app.add_typer(providers_app, name="providers")
+app.add_typer(structural_app, name="structural")
 BOUNDARY_HELP = "Inclusive ISO date/time; values without an offset use the system time zone."
 
 
@@ -138,7 +150,7 @@ def status_command(
         _exit_for_error(exc)
         return
     if json_output:
-        emit_json(CommandEnvelope(command="status", data=data))
+        emit_json(CommandEnvelope(schemaVersion="2.0", command="status", data=data))
         return
     emit_human(f"Repository: {data['repository']}")
     emit_human(f"Workspace initialized: {str(data['workspaceInitialized']).lower()}")
@@ -783,6 +795,124 @@ def doctor_command(
         emit_human(f"[{marker}] {check['name']}: {check['detail']}")
     if not data["healthy"]:
         raise typer.Exit(code=ExitCode.WORKSPACE_ERROR)
+
+
+@structural_app.command("status")
+def structural_status_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Show historical structural cache status."""
+    try:
+        data = get_structural_status(path)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="structural status", data=data))
+        return
+    emit_human(
+        f"Structural baselines: {data['baselineCount']} "
+        f"(processed commits: {data['processedCommits']})"
+    )
+
+
+@structural_app.command("rebuild")
+def structural_rebuild_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    cutoff: Annotated[
+        str | None,
+        typer.Option("--cutoff", help="Exclusive ISO date/time baseline boundary."),
+    ] = None,
+    branch: Annotated[str | None, typer.Option("--branch", help="Target branch ref.")] = None,
+    scope: Annotated[str | None, typer.Option("--scope", help="Repository path prefix.")] = None,
+    time_strategy: Annotated[
+        str | None,
+        typer.Option(
+            "--time-strategy",
+            help="Override config: lifetime, rolling-window, or dual-window.",
+        ),
+    ] = None,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Rebuild and persist an immutable structural baseline."""
+    try:
+        parsed_cutoff = (
+            parse_boundary(cutoff, end_of_day=False) if cutoff else default_structural_cutoff()
+        )
+        if parsed_cutoff is None:
+            raise ValueError("cutoff is required")
+        strategy = (
+            StructuralTimeStrategy(time_strategy.replace("-", "_").upper())
+            if time_strategy is not None
+            else None
+        )
+        data = rebuild_structural_baseline(
+            path,
+            cutoff=parsed_cutoff,
+            branch=branch,
+            scope=scope,
+            time_strategy=strategy,
+        )
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="structural rebuild", data=data))
+        return
+    emit_human(
+        f"Structural baseline {data['baselineId']}: "
+        f"{data['summary']['eligibleCommits']} commits, "
+        f"{data['summary']['rawEdges']} raw edges"
+    )
+
+
+@structural_app.command("show")
+def structural_show_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    baseline_id: Annotated[
+        str,
+        typer.Option("--baseline", help="Structural baseline ID."),
+    ] = "",
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Show one persisted structural baseline."""
+    try:
+        if not baseline_id:
+            raise ValueError("--baseline is required")
+        data = show_structural_baseline(path, baseline_id)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="structural show", data=data))
+        return
+    emit_human(json.dumps(data, ensure_ascii=False, indent=2))
+
+
+@structural_app.command("prune")
+def structural_prune_command(
+    path: Annotated[Path, typer.Argument(exists=True, file_okay=False)] = Path("."),
+    keep: Annotated[int, typer.Option("--keep", min=0, help="Newest baselines to keep.")] = 8,
+    yes: Annotated[bool, typer.Option("--yes", help="Confirm cache deletion.")] = False,
+    json_output: Annotated[bool, typer.Option("--json", help="Output versioned JSON.")] = False,
+) -> None:
+    """Delete old rebuildable structural baseline caches."""
+    if not yes:
+        emit_human("Error: structural prune requires --yes")
+        raise typer.Exit(code=ExitCode.INVALID_USAGE)
+    try:
+        data = prune_structural_baselines(path, keep=keep)
+    except Exception as exc:
+        _exit_for_error(exc)
+        return
+    if json_output:
+        emit_json(CommandEnvelope(command="structural prune", data=data))
+        return
+    emit_human(
+        f"Deleted structural baselines: {data['deletedBaselines']} "
+        f"(remaining: {data['remainingBaselines']})"
+    )
 
 
 @app.command("uninit")

@@ -40,6 +40,21 @@ merge 提交同时修改两个有效路径时，才形成 coupled pair；两个�
 热点也不证明代码质量差、难度高、所有权、员工价值或个人绩效。当前规则版本只展示这些结构信号，
 不会修改工作量、难度或排名分数。
 
+历史 `structural-baseline/v1` 只使用目标 ref 上严格早于排他 cutoff 的索引历史，绝不读取被评估
+当期。计算排除 merge commit、重复 patch、generated 路径和纯二进制提交。Context cap 用于防止
+文件对数量平方膨胀，命中时会记录 gap。所有非零文件和规范文件对 occurrence 都会保存，即使尚未
+达到候选展示阈值。
+
+Baseline 支持 lifetime、rolling-window 和 dual-window 计数。Hotspot 使用仓库内相对 percentile；
+coupling 报告 subset ratio、双向 conditional、Jaccard、跨模块状态和 hub penalty，不把共同变更
+标记为依赖。Baseline 身份包含仓库、目标 ref、范围、cutoff 和规则配置，不能跨不兼容上下文复用。
+
+历史 baseline 当前是 observation-only，不参与工作量、交付、排名、简历、LLM prompt 或
+`difficulty-rules-v1`。开源默认配置为保守的 `community-baseline-v1`，其自动 difficulty 提升固定为
+`false`，因此无需项目专属审核即可用于结构观察。启用独立 difficulty 新版本前，仍必须按公开
+calibration 协议，在仓库互斥 holdout 上通过冻结的 precision、误报率、abstain、稳定性和 promotion
+cap 全部门槛。校准缺失或失败只阻止自动提升，不阻止 observation-only 报告。
+
 ## 排名
 
 排名默认关闭。`workload` 只把已完成事项的规模映射为 `1/3/6/10` 分；`difficulty` 映射为

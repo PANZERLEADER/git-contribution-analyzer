@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 from pydriller import Repository  # type: ignore[import-untyped]
 
@@ -33,10 +34,7 @@ class PyDrillerChangeReader:
                         old_path=_normalize_path(modified.old_path),
                         new_path=_normalize_path(modified.new_path),
                         change_type=modified.change_type.name,
-                        is_binary=(
-                            isinstance(modified.content, bytes)
-                            or isinstance(modified.content_before, bytes)
-                        ),
+                        is_binary=_is_binary(modified),
                         insertions=modified.added_lines,
                         deletions=modified.deleted_lines,
                     )
@@ -47,3 +45,13 @@ class PyDrillerChangeReader:
 
 def _normalize_path(path: str | None) -> str | None:
     return path.replace("\\", "/") if path is not None else None
+
+
+def _is_binary(modified: Any) -> bool:
+    diff = getattr(modified, "_c_diff", None)
+    if diff is not None and 0o160000 in {
+        getattr(diff, "a_mode", None),
+        getattr(diff, "b_mode", None),
+    }:
+        return True
+    return isinstance(modified.content, bytes) or isinstance(modified.content_before, bytes)

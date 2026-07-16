@@ -37,6 +37,26 @@ does not prove a runtime dependency. A hotspot does not prove poor quality, high
 ownership, employee value or individual performance. Structural signals are reported separately
 and do not change assessment scores in this rule version.
 
+Historical `structural-baseline/v1` observations use the indexed target-ref history strictly
+before an exclusive cutoff, never the period being assessed. Merge commits, duplicate patches,
+generated paths and binary-only commits are excluded. A context cap prevents quadratic pair
+explosion and records a gap when applied. All nonzero file and canonical pair occurrences are
+stored even when they do not yet meet a candidate threshold.
+
+Baselines can use lifetime, rolling-window or dual-window counts. Hotspots are repository-relative
+percentiles. Couplings expose subset ratio, both conditional directions, Jaccard, cross-module
+state and a hub penalty; co-change is not labeled as dependency. Baseline identity includes the
+repository, target ref, scope, cutoff and rule configuration so results cannot be reused across an
+incompatible context.
+
+The historical baseline is observation-only. It is not an input to workload, delivery, ranking,
+resume, LLM prompts or `difficulty-rules-v1`. The conservative `community-baseline-v1` profile is
+the open-source default and is usable without project-specific review because automatic difficulty
+promotion is fixed to `false`. A separate difficulty rule version still requires the published
+calibration protocol and repository-disjoint holdout to pass every frozen precision,
+false-positive, abstention, stability and promotion-cap threshold. Missing or failed calibration
+therefore blocks promotion, not observation-only structural reporting.
+
 ## Difficulty
 
 `ROUTINE`, `STANDARD`, `COMPLEX` and `HIGH_RISK` are deterministic rule results. Signals cover

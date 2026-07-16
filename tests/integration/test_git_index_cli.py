@@ -69,6 +69,7 @@ def test_should_index_refs_commits_files_identities_and_delivery(tmp_path: Path)
 
     status = runner.invoke(app, ["status", str(repo), "--json"])
     status_payload = json.loads(status.stdout)
+    assert status_payload["schemaVersion"] == "2.0"
     assert status_payload["data"]["indexedCommits"] == 3
     assert status_payload["data"]["identities"] == 2
     assert status_payload["data"]["unresolvedIdentities"] == 2
@@ -122,6 +123,41 @@ def test_should_sync_only_new_commits_and_preserve_existing_history(tmp_path: Pa
 
     second_sync = runner.invoke(app, ["sync", str(repo), "--json"])
     assert json.loads(second_sync.stdout)["data"]["newCommits"] == 0
+
+
+def test_should_update_registered_default_branch_during_sync(tmp_path: Path) -> None:
+    repo = tmp_path / "default-branch-sync"
+    builder = GitRepoBuilder.create(repo)
+    builder.commit_text("README.md", "main\n", "docs: main")
+    assert runner.invoke(app, ["init", str(repo)]).exit_code == 0
+
+    builder.checkout("dev", create=True)
+    dev_commit = builder.commit_text("dev.txt", "dev\n", "feat: dev")
+    config = repo / ".gca" / "config.yml"
+    config.write_text(
+        config.read_text(encoding="utf-8").replace("defaultBranch: main", "defaultBranch: dev"),
+        encoding="utf-8",
+    )
+
+    sync_result = runner.invoke(app, ["sync", str(repo), "--json"])
+
+    assert sync_result.exit_code == 0
+    engine = _database(repo)
+    with engine.connect() as connection:
+        default_branch = connection.execute(
+            text("SELECT default_branch FROM repositories")
+        ).scalar_one()
+        delivery = connection.execute(
+            text(
+                "SELECT status FROM commit_delivery "
+                "WHERE commit_hash = :hash AND target_ref = 'refs/heads/dev'"
+            ),
+            {"hash": dev_commit},
+        ).scalar_one()
+    engine.dispose()
+
+    assert default_branch == "dev"
+    assert delivery == "LANDED"
 
 
 def test_should_detect_rename_binary_duplicate_patch_and_revert(tmp_path: Path) -> None:
@@ -206,6 +242,37 @@ def test_should_map_identity_manually(tmp_path: Path) -> None:
     payload = json.loads(mapped.stdout)
     assert payload["data"]["person"]["name"] == "Canonical Name"
     assert payload["data"]["person"]["confirmed"] is True
+
+
+def test_should_coalesce_author_email_case_variants(tmp_path: Path) -> None:
+    repo = tmp_path / "email-case"
+    builder = GitRepoBuilder.create(repo)
+    builder.commit_text(
+        "one.txt",
+        "one\n",
+        "feat: uppercase email",
+        name="Case Author",
+        email="Author@Example.com",
+    )
+    builder.commit_text(
+        "two.txt",
+        "two\n",
+        "feat: lowercase email",
+        name="Case Author",
+        email="author@example.com",
+    )
+
+    init_result = runner.invoke(app, ["init", str(repo)])
+    identities = runner.invoke(app, ["identities", "list", str(repo), "--json"])
+
+    assert init_result.exit_code == 0
+    assert identities.exit_code == 0
+    payload = json.loads(identities.stdout)
+    assert len(payload["data"]["persons"]) == 1
+    assert len(payload["data"]["persons"][0]["aliases"]) == 1
+
+    status = runner.invoke(app, ["status", str(repo), "--json"])
+    assert json.loads(status.stdout)["data"]["indexedCommits"] == 2
 
 
 def test_should_index_merge_parents_and_update_ref_after_force_push(tmp_path: Path) -> None:
