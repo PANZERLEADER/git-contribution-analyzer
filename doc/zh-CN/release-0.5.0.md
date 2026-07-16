@@ -26,3 +26,5 @@
 - Windows 本地验证覆盖增量/全量等价、warm cache、force-push stale、失败/取消诊断、迁移升降级
   和 Schema 兼容。
 - 正式发布前继续由现有 Windows/Linux/macOS CI matrix 验证 wheel、CLI 和 GUI。
+- 提交 `fe1f4a4` 的 Windows/Linux/macOS quality、GUI 和 secrets 共 10 项 required jobs 全部通过：
+  `https://github.com/PANZERLEADER/git-contribution-analyzer/actions/runs/29519431090`。

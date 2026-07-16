@@ -12,7 +12,7 @@
 | 推荐架构 | 方案一作为正确性参考实现，方案二作为正式持久化路径 |
 | 作者 | Codex |
 | 日期 | 2026-07-16 |
-| 计划状态 | Observation-only 本地实施与发布验证完成；Phase 4 未启用；三平台 CI 待提交后执行 |
+| 计划状态 | Observation-only 实施与三平台验收完成；Phase 4 未启用 |
 
 本计划是后续 `implement` 工作流的执行依据。每个阶段必须采用 RED -> GREEN -> IMPROVE：
 先写失败测试和固定契约，再实现最小行为，最后在测试保护下重构。阶段 4 的
@@ -25,9 +25,9 @@
 | Phase 0 | 完成 | v1 structural/difficulty/assessment 回归保持不变 |
 | Phase 1 | 完成 | 纯 Domain baseline、窗口、hotspot、coupling、exposure 与稳定 ID 已实现 |
 | Phase 2 | 社区配置完成、性能通过 | 已冻结保守的 `community-baseline-v1`；10k/100k、真实样本、1/10/100 增量及 7.14% assessment overhead 已记录；人工 calibration 保留为自动提升的可选验证 |
-| Phase 3 | 本地完成 | SQLite occurrence/cache、完整状态生命周期、warm hit、CLI、status/doctor、取消、prune、Schema 与 GUI observation 页面已实现；三平台 CI 待执行 |
+| Phase 3 | 完成 | SQLite occurrence/cache、完整状态生命周期、warm hit、CLI、status/doctor、取消、prune、Schema 与 GUI observation 页面已实现；三平台 CI 通过 |
 | Phase 4 | 未实施 | 自动 difficulty 提升关闭，继续使用 `difficulty-rules-v1`，不生成 work-assessment v3 |
-| Phase 5 | 本地完成 | 251 tests、87.23% 总覆盖率、95% Application+Domain 覆盖率、ruff、mypy、build、隔离 wheel、Windows CLI/GUI standalone smoke 通过；三平台 CI 待执行 |
+| Phase 5 | 完成 | 251 tests、87.23% 总覆盖率、95% Application+Domain 覆盖率、ruff、mypy、build、隔离 wheel、Windows CLI/GUI standalone smoke 与三平台 CI 全部通过 |
 
 实现没有引入 Hercules runtime、Forge API、项目健康、trailer 或 AI provenance。历史结构结果仅为
 仓库级观察，不进入个人工作量、难度、交付、排名、简历或 LLM 上下文。社区配置不要求项目专属
@@ -833,7 +833,7 @@ IMPROVE：
 - [x] FAILED/CANCELLED 不可消费，并保留脱敏诊断 ID；
 - [x] observation-only 不改变 work-assessment v2；
 - [x] doctor 可识别 orphan/stale/building/failed；
-- [ ] 三平台测试通过。
+- [x] Windows/Linux/macOS CI quality 与 GUI matrix 全部通过。
 
 工作量：大。
 
@@ -861,13 +861,15 @@ GREEN：
 
 验收：
 
-- [ ] 只允许 STANDARD -> COMPLEX；
-- [ ] 无 baseline 时不提升；
-- [ ] HIGH_RISK 语义不变；
-- [ ] workload/delivery 不变；
-- [ ] ranking 不读取 raw exposure；
-- [ ] promotion 分布满足冻结门槛；
-- [ ] 历史 v1/v2 run 完整可读。
+- [N/A] 只允许 STANDARD -> COMPLEX；
+- [N/A] 无 baseline 时不提升；
+- [N/A] HIGH_RISK 语义不变；
+- [N/A] workload/delivery 不变；
+- [N/A] ranking 不读取 raw exposure；
+- [N/A] promotion 分布满足冻结门槛；
+- [N/A] 历史 v1/v2 run 完整可读。
+
+上述条目属于尚未启用的自动 difficulty promotion 规则，不属于当前 observation-only 发布验收。
 
 工作量：中到大。
 
@@ -890,7 +892,8 @@ GREEN：
 - [x] 所有 Schema fixture 通过；
 - [x] 当前 Windows wheel/CLI/GUI artifacts 不包含 Hercules 或第二语言 runtime；
 - [x] 本地最终审查无 Critical/High finding；
-- [ ] 当前变更提交后，Windows/Linux/macOS CI matrix 全绿。
+- [x] 提交 `fe1f4a4` 的 Windows/Linux/macOS CI matrix 10/10 全绿：
+  `https://github.com/PANZERLEADER/git-contribution-analyzer/actions/runs/29519431090`。
 
 工作量：中。
 
