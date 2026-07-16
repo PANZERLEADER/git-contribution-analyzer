@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-07-17
+
 - Add observation-only historical structural baselines with strict cutoffs, lifetime/rolling/dual
   windows, hotspot percentiles, hub-aware coupling metrics and content-addressed identities.
 - Persist structural commit/file/edge occurrences and immutable baseline caches in SQLite, with

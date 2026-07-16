@@ -5,7 +5,8 @@
 GCA 是一个在本地运行、以证据为基础的 Git 贡献分析工具，同时提供稳定的 `gca` CLI 和可选的
 跨平台 `gca-gui` 桌面应用。它将可重复验证的 Git 仓库事实，与确定性规则、LLM 辅助解释严格分离。
 
-GCA 0.4.1 包含 PySide6/QML 桌面工作台，覆盖仓库生命周期、评估、趋势、身份、Evidence、历史
+GCA 0.5.0 包含 observation-only 历史结构基线和 PySide6/QML 桌面工作台，覆盖仓库生命周期、
+评估、趋势、身份、Evidence、历史
 对比、导出、简历和 Provider 健康检查：
 
 [安装](doc/zh-CN/installation.md) | [参与贡献](CONTRIBUTING.md) | [安全](SECURITY.md) |
@@ -282,6 +283,7 @@ delivery 的 dense ranking；只有提供 `--ranking-config` YAML 时才生成 c
 - [隐私与数据边界](doc/zh-CN/privacy.md)
 - [LLM Provider 指南](doc/zh-CN/provider-guide.md)
 - [黄金数据集](doc/zh-CN/golden-dataset.md)
+- [0.5.0 发布说明](doc/zh-CN/release-0.5.0.md)
 - [0.4.1 发布说明](doc/zh-CN/release-0.4.1.md)
 - [0.4.0 发布说明](doc/zh-CN/release-0.4.0.md)
 - [0.3.0 发布说明](doc/zh-CN/release-0.3.0.md)

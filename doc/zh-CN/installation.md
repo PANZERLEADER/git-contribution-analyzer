@@ -31,8 +31,8 @@ Linux/macOS 使用 `.venv/bin/python` 和 `.venv/bin/gca`。
 
 ```powershell
 python -m build
-python -m pip install dist/git_contribution_analyzer-0.4.1-py3-none-any.whl
-pipx install dist/git_contribution_analyzer-0.4.1-py3-none-any.whl
+python -m pip install dist/git_contribution_analyzer-0.5.0-py3-none-any.whl
+pipx install dist/git_contribution_analyzer-0.5.0-py3-none-any.whl
 gca --version
 ```
 

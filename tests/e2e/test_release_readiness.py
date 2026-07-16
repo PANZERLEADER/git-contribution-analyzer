@@ -20,8 +20,10 @@ def test_should_ship_required_release_documentation() -> None:
         "doc/releases/0.3.0.md",
         "doc/releases/0.4.0.md",
         "doc/releases/0.4.1.md",
+        "doc/releases/0.5.0.md",
         "doc/zh-CN/release-0.4.0.md",
         "doc/zh-CN/release-0.4.1.md",
+        "doc/zh-CN/release-0.5.0.md",
         "THIRD_PARTY_NOTICES.md",
     )
 
@@ -107,6 +109,7 @@ def test_should_record_current_release_in_changelog() -> None:
     assert "## 0.3.0 - 2026-07-15" in changelog
     assert "## 0.4.0 - 2026-07-15" in changelog
     assert "## 0.4.1 - 2026-07-15" in changelog
+    assert "## 0.5.0 - 2026-07-17" in changelog
 
 
 def test_should_not_publish_real_identity_or_machine_paths_in_documentation() -> None:
