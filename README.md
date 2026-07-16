@@ -28,6 +28,9 @@ Install and run the optional desktop application:
 .\.venv\Scripts\gca-gui.exe
 ```
 
+For repository-local symbol search, impact analysis, and architecture visualization, see the
+[CodeGraph and Understand-Anything guide](doc/guides/code-intelligence.md).
+
 ## Current CLI
 
 ```powershell
@@ -274,6 +277,7 @@ remains readable during 1.x but is deprecated; new integrations should use `gca 
 - [Data model and migrations](doc/architecture/data-model.md)
 - [CLI reference](doc/cli/cli-reference.md)
 - [Installation, upgrade and removal](doc/guides/installation.md)
+- [CodeGraph and Understand-Anything](doc/guides/code-intelligence.md)
 - [Assessment and resume methodology](doc/guides/methodology.md)
 - [Privacy and provider data boundaries](doc/guides/privacy.md)
 - [Golden dataset](doc/testing/golden-dataset.md)

@@ -35,6 +35,9 @@ python -m venv .venv
 .\.venv\Scripts\gca-gui.exe
 ```
 
+如需在当前仓库使用符号检索、变更影响分析和架构可视化，请参阅
+[CodeGraph 与 Understand-Anything 指南](doc/zh-CN/code-intelligence.md)。
+
 也可以从 [v0.3.0 Release](https://github.com/PANZERLEADER/git-contribution-analyzer/releases/tag/v0.3.0)
 安装 wheel，或下载 Windows、Linux、macOS standalone 制品。详细步骤见
 [中文安装指南](doc/zh-CN/installation.md)。
@@ -230,6 +233,8 @@ delivery 的 dense ranking；只有提供 `--ranking-config` YAML 时才生成 c
 ```
 
 ## 中文文档
+
+- [CodeGraph 与 Understand-Anything](doc/zh-CN/code-intelligence.md)
 
 - [中文文档索引](doc/zh-CN/README.md)
 - [架构](doc/zh-CN/architecture.md)

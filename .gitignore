@@ -13,6 +13,8 @@ build/
 *.spec
 !gca.spec
 !gca-gui.spec
+.codegraph/
+.understand-anything/
 .env
 .env.*
 !.env.example
