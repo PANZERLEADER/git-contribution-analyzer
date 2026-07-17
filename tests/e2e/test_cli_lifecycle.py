@@ -4,11 +4,13 @@ import json
 import tomllib
 from pathlib import Path
 
+from alembic import command
 from jsonschema import validate
 from sqlalchemy import create_engine, text
 from typer.testing import CliRunner
 
 from git_contribution_analyzer import __version__
+from git_contribution_analyzer.adapters.storage.sqlite.database import _alembic_config
 from git_contribution_analyzer.cli.app import app
 
 runner = CliRunner()
@@ -30,10 +32,10 @@ def test_should_show_help_and_version() -> None:
     locked_project = next(
         package for package in lock["package"] if package["name"] == "git-contribution-analyzer"
     )
-    assert version_result.stdout.strip() == "0.5.0"
-    assert metadata["project"]["version"] == "0.5.0"
-    assert locked_project["version"] == "0.5.0"
-    assert __version__ == "0.5.0"
+    assert version_result.stdout.strip() == "0.5.1"
+    assert metadata["project"]["version"] == "0.5.1"
+    assert locked_project["version"] == "0.5.1"
+    assert __version__ == "0.5.1"
 
 
 def test_should_reject_init_when_path_is_not_repository(tmp_path: Path) -> None:
@@ -97,6 +99,26 @@ def test_should_report_doctor_findings_for_initialized_repository(git_repo: Path
         "database",
         "lock",
     }
+
+
+def test_status_and_doctor_should_migrate_an_existing_workspace(git_repo: Path) -> None:
+    assert runner.invoke(app, ["init", str(git_repo)]).exit_code == 0
+    database = git_repo / ".gca" / "index.sqlite"
+    command.downgrade(_alembic_config(database), "0006_identity_merges")
+
+    status = runner.invoke(app, ["status", str(git_repo), "--json"])
+    doctor = runner.invoke(app, ["doctor", str(git_repo), "--json"])
+
+    assert status.exit_code == 0
+    assert json.loads(status.stdout)["data"]["databaseHealthy"] is True
+    assert doctor.exit_code == 0
+    engine = create_engine(f"sqlite:///{database.as_posix()}")
+    with engine.connect() as connection:
+        revision = connection.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one()
+    engine.dispose()
+    assert revision == "0007_structural_baselines"
 
 
 def test_should_list_and_test_mock_provider(git_repo: Path) -> None:

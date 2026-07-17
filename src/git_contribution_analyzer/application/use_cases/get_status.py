@@ -5,7 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from git_contribution_analyzer.adapters.git.repository_discovery import discover_repository
-from git_contribution_analyzer.adapters.storage.sqlite.database import check_database
+from git_contribution_analyzer.adapters.storage.sqlite.database import (
+    check_database,
+    initialize_database,
+)
 from git_contribution_analyzer.adapters.storage.sqlite.git_index import SqliteGitIndexStore
 from git_contribution_analyzer.adapters.storage.sqlite.structural_baseline import (
     SqliteStructuralBaselineStore,
@@ -24,6 +27,8 @@ def get_status(path: Path) -> dict[str, Any]:
         metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
     if initialized and layout.config.is_file():
         default_branch = load_config(layout.config).default_branch
+    if initialized and layout.database.is_file():
+        initialize_database(layout.database)
     stats = {
         "indexedCommits": 0,
         "identities": 0,

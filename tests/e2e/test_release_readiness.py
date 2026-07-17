@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).parents[2]
@@ -21,9 +22,11 @@ def test_should_ship_required_release_documentation() -> None:
         "doc/releases/0.4.0.md",
         "doc/releases/0.4.1.md",
         "doc/releases/0.5.0.md",
+        "doc/releases/0.5.1.md",
         "doc/zh-CN/release-0.4.0.md",
         "doc/zh-CN/release-0.4.1.md",
         "doc/zh-CN/release-0.5.0.md",
+        "doc/zh-CN/release-0.5.1.md",
         "THIRD_PARTY_NOTICES.md",
     )
 
@@ -77,8 +80,7 @@ def test_should_define_standalone_release_workflow() -> None:
     assert 'VERSION="${GITHUB_REF_NAME#v}"' in workflow
     assert 'ENGLISH_NOTES="doc/releases/${VERSION}.md"' in workflow
     assert 'CHINESE_NOTES="doc/zh-CN/release-${VERSION}.md"' in workflow
-    assert 'cat "$ENGLISH_NOTES"' in workflow
-    assert 'cat "$CHINESE_NOTES"' in workflow
+    assert 'python scripts/build_release_notes.py "$VERSION" "$COMBINED_NOTES"' in workflow
     assert '--notes-file "$COMBINED_NOTES"' in workflow
     assert "--notes-file doc/releases/0.1.0.md" not in workflow
     assert (ROOT / "gca.spec").is_file()
@@ -88,6 +90,50 @@ def test_should_define_standalone_release_workflow() -> None:
     assert "gca-gui-macos-x86_64.app.zip" in workflow
     assert "python scripts/verify_gui_standalone.py" in workflow
     assert "libegl1" in workflow
+
+
+def test_should_build_utf8_release_notes_with_tag_pinned_language_links(
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "release-notes.md"
+    subprocess.run(
+        [
+            "python",
+            str(ROOT / "scripts" / "build_release_notes.py"),
+            "0.5.1",
+            str(output),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    content = output.read_text(encoding="utf-8")
+
+    assert "## Fixes" in content
+    assert "## 修复内容" in content
+    assert "\ufffd" not in content
+    assert "????" not in content
+    assert (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/blob/"
+        "v0.5.1/doc/zh-CN/release-0.5.1.md"
+    ) in content
+
+
+def test_release_language_links_should_be_absolute_and_tag_pinned() -> None:
+    versions = ("0.1.0", "0.2.0", "0.3.0", "0.4.0", "0.4.1", "0.5.0", "0.5.1")
+    base = "https://github.com/PANZERLEADER/git-contribution-analyzer/blob"
+
+    for version in versions:
+        english = (ROOT / "doc" / "releases" / f"{version}.md").read_text(
+            encoding="utf-8"
+        )
+        chinese = (ROOT / "doc" / "zh-CN" / f"release-{version}.md").read_text(
+            encoding="utf-8"
+        )
+        chinese_ref = "0.2.0" if version == "0.1.0" else version
+        assert f"{base}/v{chinese_ref}/doc/zh-CN/release-{version}.md" in english
+        assert f"{base}/v{version}/doc/releases/{version}.md" in chinese
 
 
 def test_should_keep_cli_standalone_free_of_gui_runtime() -> None:
@@ -110,6 +156,7 @@ def test_should_record_current_release_in_changelog() -> None:
     assert "## 0.4.0 - 2026-07-15" in changelog
     assert "## 0.4.1 - 2026-07-15" in changelog
     assert "## 0.5.0 - 2026-07-17" in changelog
+    assert "## 0.5.1 - 2026-07-17" in changelog
 
 
 def test_should_not_publish_real_identity_or_machine_paths_in_documentation() -> None:

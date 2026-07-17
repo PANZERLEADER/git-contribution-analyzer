@@ -1,5 +1,7 @@
 # GCA 0.4.1
 
+[中文文档索引](https://github.com/PANZERLEADER/git-contribution-analyzer/blob/v0.4.1/doc/zh-CN/README.md) | [English](https://github.com/PANZERLEADER/git-contribution-analyzer/blob/v0.4.1/doc/releases/0.4.1.md)
+
 GCA 0.4.1 修复引入可选桌面 GUI 后的 CLI standalone 打包问题。
 
 ## 修复内容

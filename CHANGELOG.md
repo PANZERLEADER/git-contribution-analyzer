@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.5.1 - 2026-07-17
+
+- Apply additive SQLite migrations when `status`, `doctor`, `sync` or `index` opens an existing
+  workspace, and refresh workspace tool-version metadata after a successful index.
+- Preserve confirmed identities and active reversible identity merges across incremental sync and
+  full index rebuilds.
+- Build combined GitHub Release notes with explicit UTF-8 decoding and reject invalid replacement
+  characters before publication.
+- Use tag-pinned absolute English and Simplified Chinese links in release notes so links remain
+  valid both in the repository and on GitHub Release pages.
+
 ## 0.5.0 - 2026-07-17
 
 - Add observation-only historical structural baselines with strict cutoffs, lifetime/rolling/dual

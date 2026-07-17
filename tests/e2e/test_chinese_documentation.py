@@ -19,6 +19,10 @@ REQUIRED_CHINESE_DOCUMENTS = {
     "doc/zh-CN/release-0.1.0.md": "# GCA 0.1.0 发布说明",
     "doc/zh-CN/release-0.2.0.md": "# GCA 0.2.0 发布说明",
     "doc/zh-CN/release-0.3.0.md": "# GCA 0.3.0 发布说明",
+    "doc/zh-CN/release-0.4.0.md": "# GCA 0.4.0",
+    "doc/zh-CN/release-0.4.1.md": "# GCA 0.4.1",
+    "doc/zh-CN/release-0.5.0.md": "# GCA 0.5.0",
+    "doc/zh-CN/release-0.5.1.md": "# GCA 0.5.1",
 }
 
 BILINGUAL_DOCUMENT_PAIRS = {
@@ -30,7 +34,10 @@ BILINGUAL_DOCUMENT_PAIRS = {
     "doc/guides/privacy.md": "../zh-CN/privacy.md",
     "doc/guides/provider-guide.md": "../zh-CN/provider-guide.md",
     "doc/testing/golden-dataset.md": "../zh-CN/golden-dataset.md",
-    "doc/releases/0.1.0.md": "../zh-CN/release-0.1.0.md",
+    "doc/releases/0.1.0.md": (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.2.0/doc/zh-CN/release-0.1.0.md"
+    ),
     "doc/releases/0.2.0.md": (
         "https://github.com/PANZERLEADER/git-contribution-analyzer/"
         "blob/v0.2.0/doc/zh-CN/release-0.2.0.md"
@@ -38,6 +45,22 @@ BILINGUAL_DOCUMENT_PAIRS = {
     "doc/releases/0.3.0.md": (
         "https://github.com/PANZERLEADER/git-contribution-analyzer/"
         "blob/v0.3.0/doc/zh-CN/release-0.3.0.md"
+    ),
+    "doc/releases/0.4.0.md": (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.4.0/doc/zh-CN/release-0.4.0.md"
+    ),
+    "doc/releases/0.4.1.md": (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.4.1/doc/zh-CN/release-0.4.1.md"
+    ),
+    "doc/releases/0.5.0.md": (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.5.0/doc/zh-CN/release-0.5.0.md"
+    ),
+    "doc/releases/0.5.1.md": (
+        "https://github.com/PANZERLEADER/git-contribution-analyzer/"
+        "blob/v0.5.1/doc/zh-CN/release-0.5.1.md"
     ),
 }
 
@@ -74,10 +97,10 @@ def test_should_link_english_and_chinese_documentation() -> None:
         "blob/v0.2.0/doc/releases/0.2.0.md)"
     ) in chinese_release
 
-    current_chinese_release = (ROOT / "doc/zh-CN/release-0.3.0.md").read_text(
+    current_chinese_release = (ROOT / "doc/zh-CN/release-0.5.1.md").read_text(
         encoding="utf-8"
     )
     assert (
         "[English](https://github.com/PANZERLEADER/git-contribution-analyzer/"
-        "blob/v0.3.0/doc/releases/0.3.0.md)"
+        "blob/v0.5.1/doc/releases/0.5.1.md)"
     ) in current_chinese_release

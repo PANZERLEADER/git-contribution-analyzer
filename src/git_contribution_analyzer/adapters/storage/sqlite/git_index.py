@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
@@ -16,6 +17,7 @@ from git_contribution_analyzer.adapters.storage.sqlite.models import (
     commits,
     file_changes,
     identity_aliases,
+    identity_merge_events,
     persons,
     refs,
     repositories,
@@ -76,9 +78,17 @@ class SqliteGitIndexStore:
                     )
                 if clear_existing:
                     self._clear(connection, repository_id)
+                protected_alias_ids = self._active_moved_alias_ids(
+                    connection, repository_id
+                )
                 self._replace_refs(connection, repository_id, git_refs)
                 for commit in git_commits:
-                    self._insert_commit(connection, repository_id, commit)
+                    self._insert_commit(
+                        connection,
+                        repository_id,
+                        commit,
+                        protected_alias_ids,
+                    )
                 self._replace_delivery(connection, repository_id, deliveries)
         except Exception as exc:
             if isinstance(exc, WorkspaceError):
@@ -88,23 +98,32 @@ class SqliteGitIndexStore:
             engine.dispose()
 
     def _clear(self, connection: Connection, repository_id: str) -> None:
-        person_ids = list(
-            connection.execute(
-                select(persons.c.id).where(persons.c.repository_id == repository_id)
-            ).scalars()
-        )
         indexed_tables = (
             commit_delivery,
             file_changes,
             commit_parents,
             commits,
-            identity_aliases,
             refs,
         )
         for table in indexed_tables:
             connection.execute(delete(table).where(table.c.repository_id == repository_id))
-        if person_ids:
-            connection.execute(delete(persons).where(persons.c.id.in_(person_ids)))
+
+    def _active_moved_alias_ids(
+        self,
+        connection: Connection,
+        repository_id: str,
+    ) -> set[str]:
+        rows = connection.execute(
+            select(identity_merge_events.c.moved_alias_ids_json).where(
+                identity_merge_events.c.repository_id == repository_id,
+                identity_merge_events.c.status == "ACTIVE",
+            )
+        ).scalars()
+        return {
+            str(alias_id)
+            for payload in rows
+            for alias_id in json.loads(str(payload))
+        }
 
     def _replace_refs(
         self,
@@ -141,8 +160,14 @@ class SqliteGitIndexStore:
         connection: Connection,
         repository_id: str,
         commit: GitCommit,
+        protected_alias_ids: set[str],
     ) -> None:
-        alias_id = self._resolve_alias(connection, repository_id, commit.author)
+        alias_id = self._resolve_alias(
+            connection,
+            repository_id,
+            commit.author,
+            protected_alias_ids,
+        )
         commit_statement = sqlite_insert(commits).values(
             repository_id=repository_id,
             hash=commit.hash,
@@ -201,6 +226,7 @@ class SqliteGitIndexStore:
         connection: Connection,
         repository_id: str,
         identity: GitIdentity,
+        protected_alias_ids: set[str],
     ) -> str:
         alias_id = str(
             uuid5(
@@ -248,16 +274,19 @@ class SqliteGitIndexStore:
             confirmed=identity.confirmed,
             rationale="Resolved by .mailmap" if identity.confirmed else "Exact normalized email",
         )
+        alias_updates = {
+            "source": identity.source,
+            "confirmed": identity.confirmed,
+        }
+        if alias_id not in protected_alias_ids:
+            alias_updates["person_id"] = person_id
         connection.execute(
             alias_statement.on_conflict_do_update(
                 # Alias IDs normalize email case, so case-only Git author variants
-                # must resolve through the same primary key as well.
+                # must resolve through the same primary key as well. Active manual
+                # mappings keep ownership while Git history is synchronized.
                 index_elements=[identity_aliases.c.id],
-                set_={
-                    "person_id": person_id,
-                    "source": identity.source,
-                    "confirmed": identity.confirmed,
-                },
+                set_=alias_updates,
             )
         )
         return alias_id

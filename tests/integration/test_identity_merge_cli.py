@@ -228,6 +228,53 @@ def test_should_record_and_reverse_alias_map_event(tmp_path: Path) -> None:
     assert [alias["email"] for alias in restored_alice["aliases"]] == ["alice@example.com"]
 
 
+def test_sync_and_full_index_should_preserve_an_active_identity_merge(
+    tmp_path: Path,
+) -> None:
+    repo = _repository(tmp_path)
+    merged = _json(
+        "identities",
+        "merge",
+        str(repo),
+        "--source",
+        "alice@example.com",
+        "--target",
+        "bob@example.com",
+        "--yes",
+    )
+    builder = GitRepoBuilder(repo)
+    builder.commit_text(
+        "src/alice-again.py",
+        "ALICE_AGAIN = True\n",
+        "feat: alice again",
+        name="Alice",
+        email="alice@example.com",
+    )
+
+    synced = runner.invoke(app, ["sync", str(repo), "--json"])
+    indexed = runner.invoke(app, ["index", str(repo), "--json"])
+    combined = _json(
+        "assess",
+        str(repo),
+        "--person",
+        "bob@example.com",
+        "--no-llm",
+    )
+    events = _json("identities", "merges", str(repo))
+
+    assert synced.exit_code == 0, synced.stdout
+    assert indexed.exit_code == 0, indexed.stdout
+    assert len(
+        {
+            commit_hash
+            for evidence in combined["evidence"]
+            for commit_hash in evidence["commitHashes"]
+        }
+    ) == 3
+    event = next(item for item in events["merges"] if item["mergeId"] == merged["mergeId"])
+    assert event["status"] == "ACTIVE"
+
+
 def test_should_downgrade_and_upgrade_identity_merge_migration_without_active_events(
     tmp_path: Path,
 ) -> None:

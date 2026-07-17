@@ -6,9 +6,10 @@ GCA is a local, evidence-backed Git contribution analysis tool with a stable `gc
 optional cross-platform `gca-gui` desktop application. It separates deterministic repository facts
 from rule-based and LLM-assisted interpretation.
 
-The 0.5.0 release includes observation-only historical structural baselines alongside the
-PySide6/QML desktop workbench for repository lifecycle, assessments,
-trends, identities, Evidence, historical comparisons, exports, resumes and Provider health checks.
+The 0.5.1 release preserves identity merges during full reindexing and automatically migrates
+existing workspaces. It includes the 0.5.0 observation-only historical structural baselines and
+the PySide6/QML desktop workbench for repository lifecycle, assessments, trends, identities,
+Evidence, historical comparisons, exports, resumes and Provider health checks.
 
 [Installation](doc/guides/installation.md) | [Contributing](CONTRIBUTING.md) |
 [Security](SECURITY.md) | [Code of Conduct](CODE_OF_CONDUCT.md) |
@@ -325,6 +326,7 @@ remains readable during 1.x but is deprecated; new integrations should use `gca 
 - [Golden dataset](doc/testing/golden-dataset.md)
 - [Structural calibration protocol](doc/testing/structural-calibration.md)
 - [Structural calibration decision](doc/reports/structural-calibration-report.md)
+- [0.5.1 release](doc/releases/0.5.1.md)
 - [0.5.0 release](doc/releases/0.5.0.md)
 - [0.4.1 release](doc/releases/0.4.1.md)
 - [0.4.0 release](doc/releases/0.4.0.md)

@@ -4,10 +4,12 @@ import json
 from pathlib import Path
 
 import pytest
+from alembic import command
 from sqlalchemy import create_engine, text
 from typer.testing import CliRunner
 
 from git_contribution_analyzer.adapters.git.native_git import NativeGitHistory
+from git_contribution_analyzer.adapters.storage.sqlite.database import _alembic_config
 from git_contribution_analyzer.adapters.storage.sqlite.git_index import SqliteGitIndexStore
 from git_contribution_analyzer.cli.app import app
 from git_contribution_analyzer.domain.errors import WorkspaceError
@@ -123,6 +125,32 @@ def test_should_sync_only_new_commits_and_preserve_existing_history(tmp_path: Pa
 
     second_sync = runner.invoke(app, ["sync", str(repo), "--json"])
     assert json.loads(second_sync.stdout)["data"]["newCommits"] == 0
+
+
+def test_index_should_migrate_an_existing_workspace(tmp_path: Path) -> None:
+    repo = tmp_path / "migrated-index"
+    builder = GitRepoBuilder.create(repo)
+    builder.commit_text("README.md", "one\n", "docs: first")
+    assert runner.invoke(app, ["init", str(repo)]).exit_code == 0
+    database = repo / ".gca" / "index.sqlite"
+    command.downgrade(_alembic_config(database), "0006_identity_merges")
+
+    result = runner.invoke(app, ["index", str(repo), "--json"])
+    status = runner.invoke(app, ["status", str(repo), "--json"])
+
+    assert result.exit_code == 0
+    assert json.loads(status.stdout)["data"]["toolVersion"] == "0.5.1"
+    engine = _database(repo)
+    with engine.connect() as connection:
+        revision = connection.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar_one()
+        structural_facts = connection.execute(
+            text("SELECT COUNT(*) FROM structural_commit_facts")
+        ).scalar_one()
+    engine.dispose()
+    assert revision == "0007_structural_baselines"
+    assert structural_facts == 1
 
 
 def test_should_update_registered_default_branch_during_sync(tmp_path: Path) -> None:

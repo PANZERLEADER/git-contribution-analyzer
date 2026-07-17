@@ -1,6 +1,6 @@
 # GCA 0.5.0
 
-[English](../releases/0.5.0.md)
+[中文文档索引](https://github.com/PANZERLEADER/git-contribution-analyzer/blob/v0.5.0/doc/zh-CN/README.md) | [English](https://github.com/PANZERLEADER/git-contribution-analyzer/blob/v0.5.0/doc/releases/0.5.0.md)
 
 
 

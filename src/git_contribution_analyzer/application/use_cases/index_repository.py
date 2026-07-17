@@ -6,8 +6,10 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from git_contribution_analyzer import __version__
 from git_contribution_analyzer.adapters.git.native_git import NativeGitHistory
 from git_contribution_analyzer.adapters.git.repository_discovery import discover_repository
+from git_contribution_analyzer.adapters.storage.sqlite.database import initialize_database
 from git_contribution_analyzer.adapters.storage.sqlite.git_index import SqliteGitIndexStore
 from git_contribution_analyzer.adapters.storage.sqlite.structural_baseline import (
     SqliteStructuralBaselineStore,
@@ -48,9 +50,10 @@ def index_repository(
         raise WorkspaceError("GCA workspace is not initialized; run 'gca init' first")
     config = load_config(layout.config)
     history = NativeGitHistory(repository.root)
-    store = SqliteGitIndexStore(layout.database, str(repository.root))
 
     with workspace_lock(layout.locks / "workspace.lock"):
+        initialize_database(layout.database)
+        store = SqliteGitIndexStore(layout.database, str(repository.root))
         active_cancellation.raise_if_cancelled()
         active_progress.report(
             _event(task_id, repository.root, "reading_commits", "Reading Git commits")
@@ -239,18 +242,21 @@ def _update_metadata(
 ) -> None:
     metadata = json.loads(layout.metadata.read_text(encoding="utf-8"))
     target_ref = f"refs/heads/{default_branch}"
+    now = datetime.now(UTC).isoformat()
     indexed_commit = next(
         (git_ref.commit_hash for git_ref in git_refs if git_ref.name == target_ref),
         None,
     )
     metadata.update(
         {
+            "toolVersion": __version__,
             "indexedCommit": indexed_commit,
             "indexedCommits": stats["indexedCommits"],
             "identities": stats["identities"],
             "unresolvedIdentities": stats["unresolvedIdentities"],
             "refs": stats["refs"],
-            "lastSync": datetime.now(UTC).isoformat(),
+            "updatedAt": now,
+            "lastSync": now,
             "indexStatus": "up-to-date",
         }
     )

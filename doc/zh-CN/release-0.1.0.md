@@ -1,6 +1,6 @@
 # GCA 0.1.0 发布说明
 
-[中文文档索引](README.md) | [English](../releases/0.1.0.md)
+[中文文档索引](https://github.com/PANZERLEADER/git-contribution-analyzer/blob/v0.2.0/doc/zh-CN/README.md) | [English](https://github.com/PANZERLEADER/git-contribution-analyzer/blob/v0.1.0/doc/releases/0.1.0.md)
 
 ## 能力范围
 
